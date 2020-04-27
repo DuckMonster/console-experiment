@@ -22,6 +22,8 @@ void load_opengl_functions()
 	IMPORT_FUN(glEnableVertexAttribArray);
 	IMPORT_FUN(glVertexAttribPointer);
 	IMPORT_FUN(glVertexAttribIPointer);
+	IMPORT_FUN(glVertexAttribDivisor);
+	IMPORT_FUN(glVertexBindingDivisor);
 
 	// Textures
 	IMPORT_FUN(glActiveTexture);
@@ -60,6 +62,9 @@ void load_opengl_functions()
 	IMPORT_FUN(glDeleteFramebuffers);
 	IMPORT_FUN(glFramebufferTexture2D);
 	IMPORT_FUN(glCheckFramebufferStatus);
+
+	// Drawing
+	IMPORT_FUN(glDrawArraysInstanced);
 
 	// WGL stuff
 	IMPORT_FUN(wglChoosePixelFormatARB);

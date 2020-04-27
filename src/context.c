@@ -1,5 +1,6 @@
 #include "context.h"
 #include "gl_bind.h"
+#include "board.h"
 
 Context context;
 
@@ -53,6 +54,16 @@ LRESULT CALLBACK wnd_proc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		case WM_KEYDOWN:
 		{
 			Win_Key_Params* key = (Win_Key_Params*)&lparam;
+			log("KEYDOWN: 0x%x", key->scancode);
+
+			if (key->scancode == 0x23)
+				cursor_move(-1, 0);
+			if (key->scancode == 0x24)
+				cursor_move(0, 1);
+			if (key->scancode == 0x25)
+				cursor_move(0, -1);
+			if (key->scancode == 0x26)
+				cursor_move(1, 0);
 
 			// Quit on escape
 			if (key->scancode == 0x01)

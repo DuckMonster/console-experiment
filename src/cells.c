@@ -4,10 +4,13 @@
 #include <stdlib.h>
 
 GLuint vao;
-GLuint vert_vbo;
+GLuint quad_vbo;
+GLuint offset_vbo;
 GLuint cell_vbo;
 GLuint program;
-GLuint texture;
+
+GLuint font_texture;
+GLuint color_texture;
 
 typedef struct 
 {
@@ -19,66 +22,76 @@ typedef struct
 Cell_Vert* cell_verts = NULL;
 Cell* cells = NULL;
 
-inline void vert_set(Cell_Vert* vert, f32 x, f32 y, f32 u, f32 v)
-{
-	vert->x = x;
-	vert->y = y;
-	vert->u = u;
-	vert->v = v;
-}
-
-inline void cell_set(Cell* cell, i32 tile_x, i32 tile_y)
-{
-	cell->tile_x = tile_x;
-	cell->tile_y = tile_y;
-}
-
 void cells_init()
 {
 	// Setup vertex objects
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
-	u32 cellverts_size = sizeof(Cell_Vert) * CELL_COLS * CELL_ROWS * 6;
+	/* CELL QUAD VBO */
+	float quad_data[] = {
+		0.f, 0.f,
+		1.f, 0.f,
+		0.f, 1.f,
 
-	// Create cell vert buffer
-	glGenBuffers(1, &vert_vbo);
-	cell_verts = (Cell_Vert*)malloc(cellverts_size);
+		1.f, 0.f,
+		0.f, 1.f,
+		1.f, 1.f,
+	};
 
-	Cell_Vert* vert_ptr = cell_verts;
-	for(u32 y=0; y<CELL_ROWS; ++y)
+	glGenBuffers(1, &quad_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quad_data), quad_data, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, false, 0, 0);
+
+	/* CELL OFFSETS VBO */
 	{
-		for(u32 x=0; x<CELL_COLS; ++x)
+		typedef struct
 		{
-			vert_set(vert_ptr++, x, y, 0.f, 0.f);
-			vert_set(vert_ptr++, x + 1.f, y, 1.f, 0.f);
-			vert_set(vert_ptr++, x, y + 1.f, 0.f, 1.f);
+			i32 x;
+			i32 y;
+		} Cell_Offset;
 
-			vert_set(vert_ptr++, x + 1.f, y, 1.f, 0.f);
-			vert_set(vert_ptr++, x, y + 1.f, 0.f, 1.f);
-			vert_set(vert_ptr++, x + 1.f, y + 1.f, 1.f, 1.f);
+		u32 offsets_size = sizeof(Cell_Offset) * 2 * CELL_COLS * CELL_ROWS;
+		Cell_Offset* offsets = (Cell_Offset*)malloc(offsets_size);
+		Cell_Offset* ptr = offsets;
+		for(i32 y = 0; y < CELL_ROWS; ++y)
+		{
+			for(i32 x = 0; x < CELL_COLS; ++x)
+			{
+				ptr->x = x;
+				ptr->y = y;
+				ptr++;
+			}
 		}
+
+		glGenBuffers(1, &offset_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, offset_vbo);
+		glBufferData(GL_ARRAY_BUFFER, offsets_size, offsets, GL_STATIC_DRAW);
+
+		glEnableVertexAttribArray(1);
+		glVertexAttribIPointer(1, 2, GL_INT, 0, 0);
+		glVertexAttribDivisor(1, 1);
 	}
 
-	glBindBuffer(GL_ARRAY_BUFFER, vert_vbo);
-	glBufferData(GL_ARRAY_BUFFER, cellverts_size, cell_verts, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(0, 2, GL_FLOAT, false, 4 * sizeof(f32), 0);
-	glVertexAttribPointer(1, 2, GL_FLOAT, false, 4 * sizeof(f32), (void*)(2 * sizeof(f32)));
+	/* CELL DATA VBO */
+	{
+		u32 cells_size = sizeof(Cell) * CELL_COLS * CELL_ROWS;
+		cells = (Cell*)malloc(cells_size);
+		mem_zero(cells, cells_size);
 
-	// Create cell buffer
-	glGenBuffers(1, &cell_vbo);
+		glGenBuffers(1, &cell_vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, cell_vbo);
+		glBufferData(GL_ARRAY_BUFFER, cells_size, cells, GL_STREAM_DRAW);
 
-	u32 cells_size = sizeof(Cell) * CELL_COLS * CELL_ROWS * 6;
-	cells = (Cell*)malloc(cells_size);
-	mem_zero(cells, cells_size);
-
-	glBindBuffer(GL_ARRAY_BUFFER, cell_vbo);
-	glBufferData(GL_ARRAY_BUFFER, cells_size, cells, GL_STREAM_DRAW);
-
-	glEnableVertexAttribArray(2);
-	glVertexAttribIPointer(2, 2, GL_INT, 2 * sizeof(u32), 0);
+		glEnableVertexAttribArray(2);
+		glEnableVertexAttribArray(3);
+		glVertexAttribIPointer(2, 1, GL_INT, 3 * sizeof(i32), 0);
+		glVertexAttribIPointer(3, 2, GL_INT, 3 * sizeof(i32), (void*)(1 * sizeof(i32)));
+		glVertexAttribDivisor(2, 1);
+		glVertexAttribDivisor(3, 1);
+	}
 
 	// Setup the shaders
 	u32 vert_len;
@@ -105,12 +118,25 @@ void cells_init()
 	log(INFO_BUFFER);
 
 	// Load the font
-	Tga_File tga;
-	tga_load(&tga, "res/font.tga");
+	Tga_File font_tga;
+	tga_load(&font_tga, "res/font.tga");
 
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tga.width, tga.height, 0, GL_BGRA, GL_UNSIGNED_BYTE, tga.data);
+	glActiveTexture(GL_TEXTURE0);
+	glGenTextures(1, &font_texture);
+	glBindTexture(GL_TEXTURE_2D, font_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, font_tga.width, font_tga.height, 0, GL_BGRA, GL_UNSIGNED_BYTE, font_tga.data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+	Tga_File color_tga;
+	tga_load(&color_tga, "res/colors.tga");
+
+	glActiveTexture(GL_TEXTURE1);
+	glGenTextures(1, &color_texture);
+	glBindTexture(GL_TEXTURE_2D, color_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, color_tga.width, color_tga.height, 0, GL_BGRA, GL_UNSIGNED_BYTE, color_tga.data);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -120,11 +146,18 @@ void cells_init()
 	GLint u_CellmapSize = glGetUniformLocation(program, "u_CellmapSize");
 	GLint u_CellSize = glGetUniformLocation(program, "u_CellSize");
 	GLint u_TilesetSize = glGetUniformLocation(program, "u_TilesetSize");
+	GLint u_TilesetCols = glGetUniformLocation(program, "u_TilesetCols");
+	GLint u_ColorMapSize = glGetUniformLocation(program, "u_ColorMapSize");
+	GLint u_ColorSampler = glGetUniformLocation(program, "u_ColorSampler");
 	glUniform2i(u_CellmapSize, CELL_COLS, CELL_ROWS);
 	glUniform2i(u_CellSize, CELL_WIDTH, CELL_HEIGHT);
-	glUniform2i(u_TilesetSize, tga.width, tga.height);
+	glUniform2i(u_TilesetSize, font_tga.width, font_tga.height);
+	glUniform1i(u_TilesetCols, TILESET_COLS);
+	glUniform2i(u_ColorMapSize, color_tga.width, color_tga.height);
+	glUniform1i(u_ColorSampler, 1);
 
-	tga_free(&tga);
+	tga_free(&font_tga);
+	tga_free(&color_tga);
 
 	// Set some stuff
 	cell_set_string(0, 0, "Hello, World! How are you doing?");
@@ -133,39 +166,39 @@ void cells_init()
 void cells_render()
 {
 	// Update the cell vao
-	u32 cells_size = sizeof(Cell) * CELL_COLS * CELL_ROWS * 6;
+	u32 cells_size = sizeof(Cell) * CELL_COLS * CELL_ROWS;
 
 	glBindBuffer(GL_ARRAY_BUFFER, cell_vbo);
 	glBufferData(GL_ARRAY_BUFFER, cells_size, cells, GL_STREAM_DRAW);
 
 	glBindVertexArray(vao);
 	glUseProgram(program);
-	glDrawArrays(GL_TRIANGLES, 0, CELL_COLS * CELL_ROWS * 6);
+	glDrawArraysInstanced(GL_TRIANGLES, 0, 6, CELL_COLS * CELL_ROWS);
 }
 
 void cell_set_string(u32 x, u32 y, const char* str)
 {
 	u32 len = (u32)strlen(str);
-	u32 cell_index = (x + y * (CELL_COLS)) * 6;
+	u32 cell_index = (x + y * (CELL_COLS));
 
 	Cell* cell_ptr = &cells[cell_index];
-	for(u32 i=0; i<len; ++i)
+	for(u32 i=0; i<len; ++i, ++x)
 	{
+		if (x >= CELL_COLS)
+			break;
+
 		u32 tile_x = str[i] % TILESET_COLS;
 		u32 tile_y = str[i] / TILESET_COLS;
+		Cell* ptr = &cells[x + y * CELL_COLS];
 
-		for(u32 j=0; j<6; ++j)
-			cell_set(cell_ptr++, tile_x, tile_y);
+		ptr->glyph = str[i];
+		ptr->bg_color = 5;
+		ptr->fg_color = 6;
 	}
 }
 
 void cell_set_char(u32 x, u32 y, char character)
 {
-	u32 tile_x = character % TILESET_COLS;
-	u32 tile_y = character / TILESET_COLS;
-	u32 cell_index = (x + y * (CELL_COLS)) * 6;
-
-	Cell* cell_ptr = &cells[cell_index];
-	for(u32 i=0; i<6; ++i)
-		cell_set(cell_ptr++, tile_x, tile_y);
+	u32 cell_index = (x + y * (CELL_COLS));
+	cells[cell_index].glyph = character;
 }
