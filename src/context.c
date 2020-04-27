@@ -56,16 +56,8 @@ LRESULT CALLBACK wnd_proc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 			Win_Key_Params* key = (Win_Key_Params*)&lparam;
 			log("KEYDOWN: 0x%x", key->scancode);
 
-			if (key->scancode == 0x11)
-				board_place_node();
-			if (key->scancode == 0x23)
-				cursor_move(-1, 0);
-			if (key->scancode == 0x24)
-				cursor_move(0, 1);
-			if (key->scancode == 0x25)
-				cursor_move(0, -1);
-			if (key->scancode == 0x26)
-				cursor_move(1, 0);
+			if (board_key_event(key->scancode, wparam))
+				break;
 
 			// Quit on escape
 			if (key->scancode == 0x01)
