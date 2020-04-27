@@ -56,6 +56,8 @@ LRESULT CALLBACK wnd_proc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 			Win_Key_Params* key = (Win_Key_Params*)&lparam;
 			log("KEYDOWN: 0x%x", key->scancode);
 
+			if (key->scancode == 0x11)
+				board_place_node();
 			if (key->scancode == 0x23)
 				cursor_move(-1, 0);
 			if (key->scancode == 0x24)
@@ -168,6 +170,8 @@ void context_open(const char* title, i32 x, i32 y, u32 width, u32 height)
 		WGL_COLOR_BITS_ARB,			32,
 		WGL_DEPTH_BITS_ARB,			24,
 		WGL_STENCIL_BITS_ARB,		8,
+		WGL_SAMPLE_BUFFERS_ARB,		1,
+		WGL_SAMPLES_ARB,			0,
 		0
 	};
 
