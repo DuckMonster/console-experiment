@@ -1,0 +1,1 @@
+@msbuild console-game.vcxproj -verbosity:minimal -nologo -property:Configuration=%1 -p:Platform=x64

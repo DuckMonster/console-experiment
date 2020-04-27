@@ -69,6 +69,8 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;DEBUG;_CRT_SECURE_NO_WARNINGS;_MBCS;WIN;$(AdditionalDefines);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <TreatSpecificWarningsAsErrors>4013</TreatSpecificWarningsAsErrors>
+      <DisableSpecificWarnings>4244</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -87,14 +89,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\PCH.cpp">
+    <ClCompile Include="src\*.c" Exclude="src\PCH.c" />
+    <ClCompile Include="src\PCH.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\Core\**\*.cpp" />
-    <ClCompile Include="src\Runtime\**\*.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\**\*.h" />
+    <ClInclude Include="src\*.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
