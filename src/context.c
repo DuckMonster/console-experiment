@@ -60,8 +60,8 @@ LRESULT CALLBACK wnd_proc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 				break;
 
 			// Quit on escape
-			if (key->scancode == 0x01)
-				SendMessage(wnd, WM_CLOSE, 0, 0);
+			//if (key->scancode == 0x01)
+				//SendMessage(wnd, WM_CLOSE, 0, 0);
 
 			break;
 		}

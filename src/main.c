@@ -10,7 +10,7 @@ int main()
 {
 	_chdir("..\\..");
 
-	context_open("Console Game", 100, 100, CELL_WIDTH * CELL_COLS * 1, CELL_HEIGHT * CELL_ROWS * 1);
+	context_open("Console Game", 100, 100, CELL_WIDTH * CELL_COLS * 2, CELL_HEIGHT * CELL_ROWS * 2);
 	cells_init();
 	board_init();
 
@@ -21,6 +21,7 @@ int main()
 		glClearColor(0.1f, 0.1f, 0.1f, 1.f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
+		board_tic();
 		board_draw();
 		cells_render();
 
