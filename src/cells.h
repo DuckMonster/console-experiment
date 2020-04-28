@@ -7,6 +7,12 @@
 #define CLR_ORNG_0 (0x8 + 0x6);
 #define CLR_ORNG_1 (0x8 + 0x7);
 
+#define GLPH_NODE (0x90)
+#define GLPH_WIRE (0xA0)
+#define GLPH_WIRE_H (GLPH_WIRE | 0x01)
+#define GLPH_WIRE_V (GLPH_WIRE | 0x02)
+#define GLPH_WIRE_X (GLPH_WIRE_H | GLPH_WIRE_V)
+
 typedef struct
 {
 	i32 glyph;
@@ -21,7 +27,7 @@ extern Cell* cells;
 #define CELL_WIDTH 6
 #define CELL_HEIGHT 9
 
-#define TILESET_COLS 18
+#define TILESET_COLS 0x10
 
 void cells_init();
 void cells_render();

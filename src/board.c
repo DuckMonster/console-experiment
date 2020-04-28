@@ -2,6 +2,25 @@
 #include "cells.h"
 #include <stdlib.h>
 
+u8 get_direction(i32 x1, i32 y1, i32 x2, i32 y2)
+{
+	i32 dx = x2 - x1;
+	i32 dy = y2 - y1;
+
+	if (dy == 0)
+	{
+		if (dx > 0) return DIR_East;
+		if (dx < 0) return DIR_West;
+	}
+	else
+	{
+		if (dy > 0) return DIR_South;
+		if (dy < 0) return DIR_North;
+	}
+
+	return DIR_None;
+}
+
 /* NODES */
 Node nodes[MAX_THINGS];
 Node* connect_node = NULL;
@@ -34,6 +53,16 @@ Node* node_place(i32 x, i32 y)
 	node->x = x;
 	node->y = y;
 
+	// Should we intercept and split any connections?
+	Connection conn = connection_get(x, y);
+	if (conn.first)
+	{
+		node_remove_connection(conn.first, conn.second);
+		node_remove_connection(conn.second, conn.first);
+		node_connect(conn.first, node);
+		node_connect(conn.second, node);
+	}
+
 	return node;
 }
 
@@ -43,18 +72,50 @@ void node_delete(Node* node)
 	for(u32 i=0; i<node->num_connections; ++i)
 		node_remove_connection(node->connections[i], node);
 
+	if (node == connect_node)
+		connect_node = NULL;
+
 	mem_zero(node, sizeof(Node));
 }
 
 void node_connect(Node* a, Node* b)
 {
-	a->connections[a->num_connections] = b,
-	a->num_connections++;
-	assert(a->num_connections <= 4);
+	bool a_con_b = false;
+	bool b_con_a = false;
 
-	b->connections[b->num_connections] = a;
-	b->num_connections++;
-	assert(b->num_connections <= 4);
+	// Check if they're already connected...
+	for(u32 i=0; i<a->num_connections; ++i)
+	{
+		if (a->connections[i] == b)
+		{
+			a_con_b = true;
+			break;
+		}
+	}
+	for(u32 i=0; i<b->num_connections; ++i)
+	{
+		if (b->connections[i] == a)
+		{
+			b_con_a = true;
+			break;
+		}
+	}
+
+	assert(a_con_b == b_con_a);
+
+	if (!a_con_b)
+	{
+		a->connections[a->num_connections] = b,
+		a->num_connections++;
+		assert(a->num_connections <= 4);
+	}
+
+	if (!b_con_a)
+	{
+		b->connections[b->num_connections] = a;
+		b->num_connections++;
+		assert(b->num_connections <= 4);
+	}
 }
 
 void node_remove_connection(Node* node, Node* other)
@@ -75,8 +136,8 @@ void node_remove_connection(Node* node, Node* other)
 		}
 	}
 
-	assert(found);
-	node->num_connections--;
+	if (found)
+		node->num_connections--;
 }
 
 void node_activate(Node* node)
@@ -90,6 +151,49 @@ void node_activate(Node* node)
 		if (other->tic != tic_num)
 			node_activate(other);
 	}
+}
+
+Connection connection_get(i32 x, i32 y)
+{
+	Connection conn;
+	mem_zero(&conn, sizeof(conn));
+
+	for(u32 i=0; i<MAX_THINGS; ++i)
+	{
+		Node* first = &nodes[i];
+		if (!first->valid)
+			continue;
+
+		for(u32 c=0; c<first->num_connections; ++c)
+		{
+			Node* second = first->connections[c];
+			if (first->x == second->x && first->x == x)
+			{
+				i32 min_y = min(first->y, second->y);
+				i32 max_y = max(first->y, second->y);
+				if (min_y < y && max_y > y)
+				{
+					conn.first = first;
+					conn.second = second;
+					break;
+				}
+			}
+			else if (first->y == y)
+			{
+				i32 min_x = min(first->x, second->x);
+				i32 max_x = max(first->x, second->x);
+				if (min_x < x && max_x > x)
+				{
+					conn.first = first;
+					conn.second = second;
+					break;
+				}
+			}
+
+		}
+	}
+
+	return conn;
 }
 
 /* INVERTERS */
@@ -121,6 +225,25 @@ Inverter* inverter_place(i32 x, i32 y)
 	inverter->valid = true;
 	inverter->x = x;
 	inverter->y = y;
+
+	// If we're placing on a connection, intercept the connection by placing two new nodes
+	Connection conn = connection_get(x, y);
+	if (conn.first)
+	{
+		Node* left;
+		Node* right;
+
+		left = node_get(x - 1, y);
+		if (!left)
+			left = node_place(x - 1, y);
+
+		right = node_get(x + 1, y);
+		if (!right)
+			right = node_place(x + 1, y);
+
+		node_remove_connection(left, right);
+		node_remove_connection(right, left);
+	}
 
 	return inverter;
 }
@@ -164,7 +287,12 @@ void draw_connection(i32 x1, i32 y1, i32 x2, i32 y2, bool state)
 		for(i32 y=min_y+1; y<max_y; ++y)
 		{
 			Cell* cell = cell_get(x1, y);
-			cell->glyph = '|';
+			// Clear the cell if the glyph is not a wire
+			if (cell->glyph & ~GLPH_WIRE_X)
+				cell->glyph = 0;
+
+			cell->glyph |= GLPH_WIRE_V;
+
 			if (state)
 			{
 				cell->fg_color = CLR_RED_0;
@@ -183,7 +311,11 @@ void draw_connection(i32 x1, i32 y1, i32 x2, i32 y2, bool state)
 		for(i32 x=min_x+1; x<max_x; ++x)
 		{
 			Cell* cell = cell_get(x, y1);
-			cell->glyph = '-';
+			// Clear the cell if the glyph is not a wire
+			if (cell->glyph & ~GLPH_WIRE_X)
+				cell->glyph = 0;
+
+			cell->glyph |= GLPH_WIRE_H;
 			if (state)
 			{
 				cell->fg_color = CLR_RED_0;
@@ -199,38 +331,55 @@ void draw_connection(i32 x1, i32 y1, i32 x2, i32 y2, bool state)
 Board board;
 u32 tic_num = 0;
 
-bool thing_get(i32 x, i32 y, void** out_ptr, u8* out_type)
+Thing thing_get(i32 x, i32 y)
 {
+	Thing thing;
+	mem_zero(&thing, sizeof(thing));
+
 	// Nodes
 	Node* node = node_get(x, y);
 	if (node)
 	{
-		if (out_ptr)
-			*out_ptr = node;
-		if (out_type)
-			*out_type = THING_Node;
-
-		return true;
+		thing.type = THING_Node;
+		thing.ptr = node;
+		return thing;
 	}
 
 	// Inverters
 	Inverter* inv = inverter_get(x, y);
 	if (inv)
 	{
-		if (out_ptr)
-			*out_ptr = inv;
-		if (out_type)
-			*out_type = THING_Inverter;
-
-		return true;
+		thing.type = THING_Inverter;
+		thing.ptr = inv;
+		return thing;
 	}
 
-	if (out_ptr)
-		*out_ptr = NULL;
-	if (out_type)
-		*out_type = THING_NULL;
+	return thing;
+}
 
-	return false;
+u32 things_get(i32 x1, i32 y1, i32 x2, i32 y2, Thing* out_things, u32 arr_size)
+{
+	i32 min_x = min(x1, x2);
+	i32 max_x = max(x1, x2);
+	i32 min_y = min(y1, y2);
+	i32 max_y = max(y1, y2);
+
+	u32 index = 0;
+	for(i32 y=min_y; y<=max_y; ++y)
+	{
+		for(i32 x=min_x; x<=max_x; ++x)
+		{
+			Thing thing = thing_get(x, y);
+			if (thing.type == THING_NULL)
+				continue;
+
+			out_things[index++] = thing;
+			if (index >= arr_size)
+				break;
+		}
+	}
+
+	return index;
 }
 
 void board_init()
@@ -316,17 +465,7 @@ void board_draw()
 		if (!node->valid)
 			continue;
 
-		Cell* cell = cell_get(node->x, node->y);
-		cell->glyph = 'o';
-		if (node->state)
-		{
-			cell->fg_color = CLR_RED_0;
-		}
-		else
-		{
-			cell->fg_color = CLR_RED_1;
-		}
-
+		u8 dir_total = 0;
 		for(u32 j=0; j<node->num_connections; ++j)
 		{
 			Node* other = node->connections[j];
@@ -335,6 +474,19 @@ void board_draw()
 				other->x, other->y,
 				node->state
 			);
+
+			dir_total |= get_direction(node->x, node->y, other->x, other->y);
+		}
+
+		Cell* cell = cell_get(node->x, node->y);
+		cell->glyph = GLPH_NODE + dir_total;
+		if (node->state)
+		{
+			cell->fg_color = CLR_RED_0;
+		}
+		else
+		{
+			cell->fg_color = CLR_RED_1;
 		}
 	}
 
@@ -394,23 +546,65 @@ void board_draw()
 		}
 	}
 
-	Cell* cursor_cell = cell_get(board.cursor_x, board.cursor_y);
-	cursor_cell->bg_color = CLR_WHITE;
-	cursor_cell->fg_color = CLR_BLACK;
+	if (!board.visual)
+	{
+		Cell* cursor_cell = cell_get(board.cursor_x, board.cursor_y);
+		cursor_cell->bg_color = CLR_WHITE;
+		cursor_cell->fg_color = CLR_BLACK;
+	}
+	else
+	{
+		// Draw visual selection box
+		i32 min_x = min(board.vis_x, board.cursor_x);
+		i32 max_x = max(board.vis_x, board.cursor_x);
+		i32 min_y = min(board.vis_y, board.cursor_y);
+		i32 max_y = max(board.vis_y, board.cursor_y);
+		for(i32 y=min_y; y<=max_y; ++y)
+		{
+			for(i32 x=min_x; x<=max_x; ++x)
+			{
+				Cell* cell = cell_get(x, y);
+				cell->bg_color = CLR_WHITE;
+				cell->fg_color = CLR_BLACK;
+			}
+		}
+
+		// Draw cursor
+		Cell* cursor_cell = cell_get(board.cursor_x, board.cursor_y);
+		cursor_cell->bg_color = CLR_ORNG_0;
+		cursor_cell->fg_color = CLR_ORNG_1;
+	}
 }
 
 void board_delete()
 {
-	void* thing;
-	u8 type;
-
-	if (!thing_get(board.cursor_x, board.cursor_y, &thing, &type))
-		return;
-
-	switch(type)
+	if (!board.visual)
 	{
-		case THING_Node: node_delete(thing); break;
-		case THING_Inverter: inverter_delete(thing); break;
+		Thing thing = thing_get(board.cursor_x, board.cursor_y);
+		if (!thing.ptr)
+			return;
+
+		switch(thing.type)
+		{
+			case THING_Node: node_delete(thing.ptr); break;
+			case THING_Inverter: inverter_delete(thing.ptr); break;
+		}
+	}
+	else
+	{
+		static Thing thing_arr[64];
+		u32 num_things = things_get(board.vis_x, board.vis_y, board.cursor_x, board.cursor_y, thing_arr, 64);
+
+		for(u32 i=0; i<num_things; ++i)
+		{
+			switch(thing_arr[i].type)
+			{
+				case THING_Node: node_delete(thing_arr[i].ptr); break;
+				case THING_Inverter: inverter_delete(thing_arr[i].ptr); break;
+			}
+		}
+
+		board.visual = false;
 	}
 }
 
@@ -428,21 +622,18 @@ void board_place_node()
 		Node* target_node = NULL;
 
 		// Find or create the target node
-		u8 type;
-		void* thing;
-		thing_get(board.cursor_x, board.cursor_y, &thing, &type);
-
-		if (type == THING_NULL)
+		Thing thing = thing_get(board.cursor_x, board.cursor_y);
+		if (thing.type == THING_NULL)
 		{
 			target_node = node_place(board.cursor_x, board.cursor_y);
 		}
 		else
 		{
 			// Something else is placed here... abort!
-			if (type != THING_Node)
+			if (thing.type != THING_Node)
 				return;
 
-			target_node = (Node*)thing;
+			target_node = thing.ptr;
 		}
 
 		// If we selected the same node, stop trying to connect it
@@ -529,16 +720,37 @@ bool board_key_event(u32 code, char chr)
 		case KEY_DELETE: board_delete(); break;
 		case KEY_CANCEL: 
 		{
-			// Tried to cancel, but we aren't connecting anything
-			if (connect_node == NULL) return false;
+			// Exit visual mode
+			if (board.visual)
+			{
+				board.visual = false;
+				break;
+			}
 
-			connect_node = NULL;
-			break;
+			if (connect_node != NULL)
+			{
+				connect_node = NULL;
+				break;
+			}
+
+			return false;
 		}
 		case KEY_MOVE_LEFT: cursor_move(-1, 0); break;
 		case KEY_MOVE_DOWN: cursor_move(0, 1); break;
 		case KEY_MOVE_UP: cursor_move(0, -1); break;
 		case KEY_MOVE_RIGHT: cursor_move(1, 0); break;
+
+		case KEY_VISUAL_MODE:
+		{
+			board.visual = !board.visual;
+			board.vis_x = board.cursor_x;
+			board.vis_y = board.cursor_y;
+
+			break;
+		}
+
+		case KEY_TIC: board_tic(); break;
+
 		default: return false;
 	}
 

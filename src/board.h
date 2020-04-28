@@ -10,14 +10,18 @@
 #define KEY_MOVE_DOWN 0x24
 #define KEY_MOVE_UP 0x25
 #define KEY_MOVE_RIGHT 0x26
+#define KEY_VISUAL_MODE 0x2F
+#define KEY_TIC 0x34
 
-enum Thing_Type
+enum Direction
 {
-	THING_NULL,
-	THING_Node,
-	THING_Inverter,
-	THING_Comment,
+	DIR_None	= 0x0,
+	DIR_East	= 0x1,
+	DIR_North	= 0x2,
+	DIR_West	= 0x4,
+	DIR_South	= 0x8,
 };
+u8 get_direction(i32 x1, i32 y1, i32 x2, i32 y2);
 
 /* NODES */
 typedef struct Node Node;
@@ -43,6 +47,14 @@ void node_delete(Node* node);
 void node_connect(Node* a, Node* b);
 void node_remove_connection(Node* node, Node* other);
 void node_activate(Node* node);
+
+typedef struct
+{
+	Node* first;
+	Node* second;
+} Connection;
+
+Connection connection_get(i32 x, i32 y);
 
 /* INVERTERS */
 typedef struct
@@ -76,12 +88,31 @@ Comment* comment_place(i32 x, i32 y);
 /* BOARD */
 typedef struct
 {
+	bool visual;
+	i32 vis_x;
+	i32 vis_y;
+
 	i32 cursor_x;
 	i32 cursor_y;
 } Board;
 extern Board board;
 
-bool thing_get(i32 x, i32 y, void** out_ptr, u8* out_type);
+/* THINGS */
+enum Thing_Type
+{
+	THING_NULL,
+	THING_Node,
+	THING_Inverter,
+	THING_Comment,
+};
+
+typedef struct
+{
+	u8 type;
+	void* ptr;
+} Thing;
+Thing thing_get(i32 x, i32 y);
+u32 things_get(i32 x1, i32 y1, i32 x2, i32 y2, Thing* out_things, u32 arr_size);
 
 void board_init();
 void board_tic();
