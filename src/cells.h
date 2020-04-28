@@ -12,6 +12,7 @@
 #define GLPH_WIRE_H (GLPH_WIRE | 0x01)
 #define GLPH_WIRE_V (GLPH_WIRE | 0x02)
 #define GLPH_WIRE_X (GLPH_WIRE_H | GLPH_WIRE_V)
+#define GLPH_BORDER (0xB0)
 
 typedef struct
 {

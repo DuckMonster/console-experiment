@@ -265,6 +265,50 @@ Comment* comment_place(Circuit* circ, i32 x, i32 y)
 	return comment;
 }
 
+/* CHIPS */
+Chip* chip_get(Circuit* circ, i32 x, i32 y)
+{
+	for(u32 i=0; i<MAX_THINGS; ++i)
+	{
+		Chip* chip = &circ->chips[i];
+		if (!chip->valid)
+			continue;
+
+		i32 dx = x - chip->x;
+		i32 dy = y - chip->y;
+		if (dx < 0 || dx >= chip->width || dy < 0 || dy >= chip->height)
+			continue;
+
+		return chip;
+	}
+
+	return NULL;
+}
+
+Chip* chip_place(Circuit* circ, i32 x, i32 y)
+{
+	Chip* chip = NULL;
+	for(u32 i=0; i<MAX_THINGS; ++i)
+	{
+		if (!circ->chips[i].valid)
+		{
+			chip = &circ->chips[i];
+			break;
+		}
+	}
+
+	assert(chip);
+	chip->valid = true;
+	chip->x = x;
+	chip->y = y;
+	chip->width = 5;
+	chip->height = 5;
+
+	chip->link_circuit = circuit_make("CHIP");
+	return chip;
+}
+
+/* THINGS */
 Thing thing_get(Circuit* circ, i32 x, i32 y)
 {
 	Thing thing;
@@ -314,4 +358,18 @@ u32 things_get(Circuit* circ, i32 x1, i32 y1, i32 x2, i32 y2, Thing* out_things,
 	}
 
 	return index;
+}
+
+Circuit* circuit_make(const char* name)
+{
+	Circuit* circ = (Circuit*)malloc(sizeof(Circuit));
+	mem_zero(circ, sizeof(Circuit));
+
+	circ->name = name;
+	return circ;
+}
+
+void circuit_free(Circuit* circ)
+{
+	free(circ);
 }

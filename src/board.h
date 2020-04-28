@@ -5,6 +5,7 @@
 #define KEY_PLACE_NODE 0x11
 #define KEY_PLACE_INVERTER 0x17
 #define KEY_PLACE_COMMENT 0x2E
+#define KEY_PLACE_CHIP 0x19
 #define KEY_DELETE 0x2D
 #define KEY_MOVE_LEFT 0x23
 #define KEY_MOVE_DOWN 0x24
@@ -28,7 +29,6 @@ typedef struct
 	i32 cursor_x;
 	i32 cursor_y;
 
-	Circuit main_circuit;
 	Circuit* edit_stack[EDIT_STACK_SIZE];
 	i32 edit_index;
 } Board;

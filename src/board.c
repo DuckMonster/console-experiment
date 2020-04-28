@@ -14,14 +14,8 @@ void board_init()
 	board.cursor_x = 0;
 	board.cursor_y = 0;
 
-	for(i32 i=0; i<EDIT_STACK_SIZE; ++i)
-	{
-		Circuit* circ = (Circuit*)malloc(sizeof(Circuit));
-		mem_zero(circ, sizeof(Circuit));
-		circ->name = "AAAAAAAAA" + i;
-
-		board.edit_stack[i] = circ;
-	}
+	// Make the base circuit
+	board.edit_stack[0] = circuit_make("BASE");
 }
 
 void tic_circuit(Circuit* circ)
@@ -243,6 +237,28 @@ void draw_circuit(Circuit* circ)
 			cell++;
 		}
 	}
+
+	// Draw chips
+	for(u32 i=0; i<MAX_THINGS; ++i)
+	{
+		Chip* chip = &circ->chips[i];
+		if (!chip->valid)
+			continue;
+
+		for(i32 y=0; y<chip->height; ++y)
+		{
+			for(i32 x=0; x<chip->width; ++x)
+			{
+				Cell* cell = cell_get(chip->x + x, chip->y + y);
+				cell->bg_color = CLR_RED_1;
+				cell->fg_color = CLR_RED_0;
+				cell->glyph = ' ';
+
+				if (x == 0 || y == 0 || x == chip->width - 1 || y == chip->height - 1)
+					cell->glyph = '#';
+			}
+		}
+	}
 }
 
 void board_draw()
@@ -401,6 +417,12 @@ void board_place_comment()
 	board.cursor_x += 2;
 }
 
+void board_place_chip()
+{
+	Circuit* circ = board_get_edit_circuit();
+	chip_place(circ, board.cursor_x, board.cursor_y);
+}
+
 void board_comment_write(char chr)
 {
 	if (chr >= ' ' && chr <= '~')
@@ -448,7 +470,11 @@ void edit_stack_step_in()
 	if (board.edit_index >= EDIT_STACK_SIZE - 1)
 		return;
 
-	board.edit_index++;
+	Chip* chip = chip_get(board_get_edit_circuit(), board.cursor_x, board.cursor_y);
+	if (chip == NULL)
+		return;
+
+	board.edit_stack[board.edit_index++] = chip->link_circuit;
 }
 
 void edit_stack_step_out()
@@ -473,6 +499,7 @@ bool board_key_event(u32 code, char chr)
 		case KEY_PLACE_NODE: board_place_node(); break;
 		case KEY_PLACE_INVERTER: board_place_inverter(); break;
 		case KEY_PLACE_COMMENT: board_place_comment(); break;
+		case KEY_PLACE_CHIP: board_place_chip(); break;
 		case KEY_DELETE: board_delete(); break;
 		case KEY_CANCEL: 
 		{

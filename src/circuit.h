@@ -77,6 +77,23 @@ typedef struct
 
 Comment* comment_place(Circuit* circ, i32 x, i32 y);
 
+/* CHIPS */
+typedef struct
+{
+	Circuit* circuit;
+
+	bool valid;
+	i32 x;
+	i32 y;
+	i32 width;
+	i32 height;
+
+	Circuit* link_circuit;
+} Chip;
+
+Chip* chip_get(Circuit* circ, i32 x, i32 y);
+Chip* chip_place(Circuit* circ, i32 x, i32 y);
+
 /* THINGS */
 enum Thing_Type
 {
@@ -84,6 +101,7 @@ enum Thing_Type
 	THING_Node,
 	THING_Inverter,
 	THING_Comment,
+	THING_Chip,
 };
 
 typedef struct
@@ -103,4 +121,8 @@ typedef struct Circuit
 	Node nodes[MAX_THINGS];
 	Inverter inverters[MAX_THINGS];
 	Comment comments[MAX_THINGS];
+	Chip chips[MAX_THINGS];
 } Circuit;
+
+Circuit* circuit_make(const char* name);
+void circuit_free(Circuit* circ);
