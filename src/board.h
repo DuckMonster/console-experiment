@@ -6,6 +6,7 @@
 #define KEY_PLACE_INVERTER 0x17
 #define KEY_PLACE_COMMENT 0x2E
 #define KEY_PLACE_CHIP 0x19
+#define KEY_TOGGLE_LINK 0x18
 #define KEY_DELETE 0x2D
 #define KEY_MOVE_LEFT 0x23
 #define KEY_MOVE_DOWN 0x24
@@ -39,8 +40,5 @@ void board_init();
 void board_tic();
 void board_draw();
 
-void board_place_node();
 bool board_key_event(u32 code, char chr);
-void cursor_move(i32 dx, i32 dy);
-
 Circuit* board_get_edit_circuit();

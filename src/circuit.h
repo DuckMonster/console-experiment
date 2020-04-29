@@ -1,6 +1,8 @@
 #pragma once
-#define MAX_THINGS 256
+#define MAX_NODES 256
+#define MAX_LINKS 8
 typedef struct Circuit Circuit;
+typedef u32 thing_id;
 
 enum Direction
 {
@@ -13,8 +15,7 @@ enum Direction
 u8 get_direction(i32 x1, i32 y1, i32 x2, i32 y2);
 
 /* NODES */
-typedef struct Node Node;
-typedef struct Node
+typedef struct
 {
 	bool valid;
 	bool state;
@@ -22,106 +23,16 @@ typedef struct Node
 	i32 x;
 	i32 y;
 	u32 tic;
-
-	Node* connections[4];
-	u32 num_connections;
 } Node;
 
-extern u32 tic_num;
-
-Node* node_get(Circuit* circ, i32 x, i32 y);
-Node* node_place(Circuit* circ, i32 x, i32 y);
-void node_delete(Node* node);
-void node_connect(Node* a, Node* b);
-void node_remove_connection(Node* node, Node* other);
-void node_activate(Node* node);
-
-typedef struct
-{
-	Circuit* circuit;
-
-	Node* first;
-	Node* second;
-} Connection;
-
-Connection connection_get(Circuit* circ, i32 x, i32 y);
-
-/* INVERTERS */
-typedef struct
-{
-	Circuit* circuit;
-
-	bool valid;
-	bool state;
-	i32 x;
-	i32 y;
-	u32 tic;
-} Inverter;
-
-Inverter* inverter_get(Circuit* circ, i32 x, i32 y);
-Inverter* inverter_place(Circuit* circ, i32 x, i32 y);
-void inverter_delete(Inverter* inv);
-
-/* COMMENTS */
-#define COMMENT_MAX_LEN 20
-typedef struct
-{
-	Circuit* circuit;
-
-	bool valid;
-	i32 x;
-	i32 y;
-	char msg[COMMENT_MAX_LEN];
-	u32 msg_len;
-} Comment;
-
-Comment* comment_place(Circuit* circ, i32 x, i32 y);
-
-/* CHIPS */
-typedef struct
-{
-	Circuit* circuit;
-
-	bool valid;
-	i32 x;
-	i32 y;
-	i32 width;
-	i32 height;
-
-	Circuit* link_circuit;
-} Chip;
-
-Chip* chip_get(Circuit* circ, i32 x, i32 y);
-Chip* chip_place(Circuit* circ, i32 x, i32 y);
-
-/* THINGS */
-enum Thing_Type
-{
-	THING_NULL,
-	THING_Node,
-	THING_Inverter,
-	THING_Comment,
-	THING_Chip,
-};
-
-typedef struct
-{
-	u8 type;
-	void* ptr;
-} Thing;
-
-Thing thing_get(Circuit* circ, i32 x, i32 y);
-u32 things_get(Circuit* circ, i32 x1, i32 y1, i32 x2, i32 y2, Thing* out_things, u32 arr_size);
 
 /* CIRCUIT */
 typedef struct Circuit
 {
 	const char* name;
 
-	Node nodes[MAX_THINGS];
-	Inverter inverters[MAX_THINGS];
-	Comment comments[MAX_THINGS];
-	Chip chips[MAX_THINGS];
+	u32 last_node = 0;
+	Node nodes[MAX_NODES];
 } Circuit;
 
 Circuit* circuit_make(const char* name);
