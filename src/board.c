@@ -3,14 +3,12 @@
 #include "circuit.h"
 #include <stdlib.h>
 
+Node* connect_node = NULL;
 Board board;
 u32 tic_num = 0;
 
 void board_init()
 {
-	board.cursor_x = 0;
-	board.cursor_y = 0;
-
 	// Make the base circuit
 	board.edit_stack[0] = circuit_make("BASE");
 }
@@ -29,7 +27,7 @@ void board_tic()
 
 void draw_edit_stack()
 {
-	Cell* cell = cell_get(0, 0);
+	Cell* cell = cells;
 	for(i32 i=0; i<=board.edit_index; ++i)
 	{
 		Circuit* circ = board.edit_stack[i];
@@ -70,7 +68,7 @@ void draw_connection(i32 x1, i32 y1, i32 x2, i32 y2, bool state)
 
 		for(i32 y=min_y+1; y<max_y; ++y)
 		{
-			Cell* cell = cell_get(x1, y);
+			Cell* cell = cell_get(point(x1, y));
 			// Clear the cell if the glyph is not a wire
 			if (cell->glyph & ~GLPH_WIRE_X)
 				cell->glyph = 0;
@@ -94,7 +92,7 @@ void draw_connection(i32 x1, i32 y1, i32 x2, i32 y2, bool state)
 
 		for(i32 x=min_x+1; x<max_x; ++x)
 		{
-			Cell* cell = cell_get(x, y1);
+			Cell* cell = cell_get(point(x, y1));
 			// Clear the cell if the glyph is not a wire
 			if (cell->glyph & ~GLPH_WIRE_X)
 				cell->glyph = 0;
@@ -114,6 +112,34 @@ void draw_connection(i32 x1, i32 y1, i32 x2, i32 y2, bool state)
 
 void draw_circuit(Circuit* circ)
 {
+	// Draw nodes
+	for(u32 i=0; i < circ->node_num; i++)
+	{
+		Node* node = &circ->nodes[i];
+		if (!node->valid)
+			continue;
+
+		Cell* cell = cell_get(node->pos);
+		cell->glyph = GLPH_NODE;
+		if (connect_node == node)
+		{
+			cell->fg_color = CLR_RED_1;
+			cell->bg_color = CLR_RED_0;
+		}
+		else
+		{
+			cell->fg_color = CLR_RED_0;
+		}
+
+		for(u32 i=0; i<4; ++i)
+		{
+			Node* other = node_get(circ, node->connections[i]);
+			if (!other)
+				continue;
+
+			draw_connection(node->pos.x, node->pos.y, other->pos.x, other->pos.y, true);
+		}
+	}
 }
 
 void board_draw()
@@ -145,29 +171,29 @@ void board_draw()
 
 	if (!board.visual)
 	{
-		Cell* cursor_cell = cell_get(board.cursor_x, board.cursor_y);
+		Cell* cursor_cell = cell_get(board.cursor);
 		cursor_cell->bg_color = CLR_WHITE;
 		cursor_cell->fg_color = CLR_BLACK;
 	}
 	else
 	{
 		// Draw visual selection box
-		i32 min_x = min(board.vis_x, board.cursor_x);
-		i32 max_x = max(board.vis_x, board.cursor_x);
-		i32 min_y = min(board.vis_y, board.cursor_y);
-		i32 max_y = max(board.vis_y, board.cursor_y);
+		i32 min_x = min(board.vis_x, board.cursor.x);
+		i32 max_x = max(board.vis_x, board.cursor.x);
+		i32 min_y = min(board.vis_y, board.cursor.y);
+		i32 max_y = max(board.vis_y, board.cursor.y);
 		for(i32 y=min_y; y<=max_y; ++y)
 		{
 			for(i32 x=min_x; x<=max_x; ++x)
 			{
-				Cell* cell = cell_get(x, y);
+				Cell* cell = cell_get(point(x, y));
 				cell->bg_color = CLR_WHITE;
 				cell->fg_color = CLR_BLACK;
 			}
 		}
 
 		// Draw cursor
-		Cell* cursor_cell = cell_get(board.cursor_x, board.cursor_y);
+		Cell* cursor_cell = cell_get(board.cursor);
 		cursor_cell->bg_color = CLR_ORNG_0;
 		cursor_cell->fg_color = CLR_ORNG_1;
 	}
@@ -177,10 +203,41 @@ void board_draw()
 
 void board_delete()
 {
+	Node* node = node_find(board_get_edit_circuit(), board.cursor);
+	if (node)
+	{
+		node_delete(board_get_edit_circuit(), node);
+		if (node == connect_node)
+			connect_node = NULL;
+	}
 }
 
 void board_place_node()
 {
+	Circuit* circ = board_get_edit_circuit();
+
+	Node* node = node_find(circ, board.cursor);
+	if (!node)
+	{
+		node = node_create(board_get_edit_circuit(), board.cursor);
+	}
+
+	if (connect_node)
+	{
+		// Re-selected the same node, stop connecting
+		if (node == connect_node)
+		{
+			connect_node = NULL;
+			return;
+		}
+
+		node_connect(circ, connect_node, node);
+		connect_node = NULL;
+	}
+	else
+	{
+		connect_node = node;
+	}
 }
 
 void board_place_inverter()
@@ -205,8 +262,8 @@ void board_comment_write(char chr)
 
 void cursor_move(i32 dx, i32 dy)
 {
-	board.cursor_x = min(max(board.cursor_x + dx, 0), CELL_COLS - 1);
-	board.cursor_y = min(max(board.cursor_y + dy, 0), CELL_ROWS - 1);
+	board.cursor.x = min(max(board.cursor.x + dx, 0), CELL_COLS - 1);
+	board.cursor.y = min(max(board.cursor.y + dy, 0), CELL_ROWS - 1);
 }
 
 void edit_stack_step_in()
@@ -215,6 +272,20 @@ void edit_stack_step_in()
 
 void edit_stack_step_out()
 {
+}
+
+void board_save()
+{
+	circuit_save(board_get_edit_circuit(), "res/test.circ");
+}
+
+void board_load()
+{
+	Circuit* loaded_circ = circuit_make("TEMP");
+	circuit_load(loaded_circ, "res/test.circ");
+	circuit_merge(board_get_edit_circuit(), loaded_circ);
+
+	circuit_free(loaded_circ);
 }
 
 bool board_key_event(u32 code, char chr)
@@ -226,7 +297,7 @@ bool board_key_event(u32 code, char chr)
 		case KEY_PLACE_COMMENT: board_place_comment(); break;
 		case KEY_PLACE_CHIP: board_place_chip(); break;
 
-		case KEY_TOGGLE_LINK: board_toggle_link(); break;
+		//case KEY_TOGGLE_LINK: board_toggle_link(); break;
 
 		case KEY_DELETE: board_delete(); break;
 		case KEY_CANCEL: 
@@ -248,14 +319,17 @@ bool board_key_event(u32 code, char chr)
 		case KEY_VISUAL_MODE:
 		{
 			board.visual = !board.visual;
-			board.vis_x = board.cursor_x;
-			board.vis_y = board.cursor_y;
+			board.vis_x = board.cursor.x;
+			board.vis_y = board.cursor.y;
 
 			break;
 		}
 
 		case KEY_EDIT_STEP_IN: edit_stack_step_in(); break;
 		case KEY_EDIT_STEP_OUT: edit_stack_step_out(); break;
+
+		case KEY_SAVE: board_save(); break;
+		case KEY_LOAD: board_load(); break;
 
 		case KEY_TIC: board_tic(); break;
 

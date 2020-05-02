@@ -158,9 +158,6 @@ void cells_init()
 
 	tga_free(&font_tga);
 	tga_free(&color_tga);
-
-	// Set some stuff
-	cell_set_string(0, 0, "Hello, World! How are you doing?");
 }
 
 void cells_render()
@@ -174,31 +171,4 @@ void cells_render()
 	glBindVertexArray(vao);
 	glUseProgram(program);
 	glDrawArraysInstanced(GL_TRIANGLES, 0, 6, CELL_COLS * CELL_ROWS);
-}
-
-void cell_set_string(u32 x, u32 y, const char* str)
-{
-	u32 len = (u32)strlen(str);
-	u32 cell_index = (x + y * (CELL_COLS));
-
-	Cell* cell_ptr = &cells[cell_index];
-	for(u32 i=0; i<len; ++i, ++x)
-	{
-		if (x >= CELL_COLS)
-			break;
-
-		u32 tile_x = str[i] % TILESET_COLS;
-		u32 tile_y = str[i] / TILESET_COLS;
-		Cell* ptr = &cells[x + y * CELL_COLS];
-
-		ptr->glyph = str[i];
-		ptr->bg_color = 5;
-		ptr->fg_color = 6;
-	}
-}
-
-void cell_set_char(u32 x, u32 y, char character)
-{
-	u32 cell_index = (x + y * (CELL_COLS));
-	cells[cell_index].glyph = character;
 }

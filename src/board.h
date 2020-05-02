@@ -16,6 +16,9 @@
 #define KEY_EDIT_STEP_IN 0x4E
 #define KEY_EDIT_STEP_OUT 0x4A
 
+#define KEY_SAVE 0x1F
+#define KEY_LOAD 0x18
+
 #define KEY_VISUAL_MODE 0x2F
 #define KEY_TIC 0x34
 #define EDIT_STACK_SIZE 8
@@ -27,8 +30,7 @@ typedef struct
 	i32 vis_x;
 	i32 vis_y;
 
-	i32 cursor_x;
-	i32 cursor_y;
+	Point cursor;
 
 	Circuit* edit_stack[EDIT_STACK_SIZE];
 	i32 edit_index;

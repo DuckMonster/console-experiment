@@ -32,6 +32,4 @@ extern Cell* cells;
 
 void cells_init();
 void cells_render();
-void cell_set_string(u32 x, u32 y, const char* str);
-void cell_set_char(u32 x, u32 y, char character);
-inline Cell* cell_get(u32 x, u32 y) { return &cells[x + y * CELL_COLS]; }
+inline Cell* cell_get(Point pos) { return &cells[pos.x + pos.y * CELL_COLS]; }

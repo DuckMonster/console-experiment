@@ -1,8 +1,15 @@
 #pragma once
 #define MAX_NODES 256
 #define MAX_LINKS 8
+
 typedef struct Circuit Circuit;
-typedef u32 thing_id;
+typedef struct
+{
+	u16 generation;
+	u16 index;
+} Thing_Id;
+inline bool id_eq(Thing_Id a, Thing_Id b) { return memcmp(&a, &b, sizeof(Thing_Id)) == 0; }
+bool id_null(Circuit* circ, Thing_Id id);
 
 enum Direction
 {
@@ -17,23 +24,54 @@ u8 get_direction(i32 x1, i32 y1, i32 x2, i32 y2);
 /* NODES */
 typedef struct
 {
+	u16 generation;
+
 	bool valid;
 	bool state;
 
-	i32 x;
-	i32 y;
+	Point pos;
 	u32 tic;
+
+	Thing_Id connections[4];
 } Node;
 
+Node* node_find(Circuit* circ, Point pos);
+Node* node_get(Circuit* circ, Thing_Id id);
+Node* node_create(Circuit* circ, Point pos);
+void node_delete(Circuit* circ, Node* node);
+Thing_Id node_id(Circuit* circ, Node* node);
+
+void node_connect(Circuit* circ, Node* a, Node* b);
+
+/* THINGS */
+enum Thing_Type
+{
+	THING_Null,
+	THING_Node,
+};
+
+typedef struct
+{
+	u8 type;
+	void* ptr;
+} Thing;
+
+Thing thing_find(Circuit* circ, Point pos);
+Thing thing_find_rect(Circuit* circ, i32 x, i32 y);
 
 /* CIRCUIT */
 typedef struct Circuit
 {
-	const char* name;
+	char name[20];
+	u16 gen_num;
 
-	u32 last_node = 0;
 	Node nodes[MAX_NODES];
+	u32 node_num;
 } Circuit;
 
 Circuit* circuit_make(const char* name);
 void circuit_free(Circuit* circ);
+void circuit_merge(Circuit* circ, Circuit* other);
+
+void circuit_save(Circuit* circ, const char* path);
+void circuit_load(Circuit* circ, const char* path);
