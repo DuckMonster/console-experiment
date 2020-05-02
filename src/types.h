@@ -32,3 +32,14 @@ typedef struct
 	Point a;
 	Point b;
 } Rect;
+inline Rect rect(Point a, Point b)
+{
+	Rect rect;
+	rect.a.x = min(a.x, b.x);
+	rect.b.x = max(a.x, b.x);
+	rect.a.y = min(a.y, b.y);
+	rect.b.y = max(a.y, b.y);
+	return rect;
+}
+
+bool point_in_rect(Point point, Rect rect);
