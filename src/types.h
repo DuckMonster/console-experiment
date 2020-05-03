@@ -1,4 +1,5 @@
 #pragma once
+#include <stdlib.h>
 
 typedef char bool;
 enum { false, true };
@@ -26,19 +27,22 @@ inline Point point(i32 x, i32 y)
 	return point;
 }
 inline bool point_eq(Point a, Point b) { return a.x == b.x && a.y == b.y; }
+inline void point_add(Point* a, const Point other) { a->x += other.x; a->y += other.y; }
+inline void point_sub(Point* a, const Point other) { a->x -= other.x; a->y -= other.y; }
+inline void point_inv(Point* a) { a->x = -a->x; a->y = -a->y; }
 
 typedef struct
 {
-	Point a;
-	Point b;
+	Point min;
+	Point max;
 } Rect;
 inline Rect rect(Point a, Point b)
 {
 	Rect rect;
-	rect.a.x = min(a.x, b.x);
-	rect.b.x = max(a.x, b.x);
-	rect.a.y = min(a.y, b.y);
-	rect.b.y = max(a.y, b.y);
+	rect.min.x = min(a.x, b.x);
+	rect.max.x = max(a.x, b.x);
+	rect.min.y = min(a.y, b.y);
+	rect.max.y = max(a.y, b.y);
 	return rect;
 }
 

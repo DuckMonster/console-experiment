@@ -136,6 +136,25 @@ Thing thing_find(Circuit* circ, Point pos)
 	return thing;
 }
 
+u32 things_find(Circuit* circ, Rect rect, Thing* out_arr, u32 arr_size)
+{
+	u32 index = 0;
+
+	// Collect nodes
+	for(u32 i=0; i<circ->node_num && index < arr_size; ++i)
+	{
+		Node* node = &circ->nodes[i];
+		if (node->valid && point_in_rect(node->pos, rect))
+		{
+			out_arr[index].type = THING_Node;
+			out_arr[index].ptr = node;
+			index++;
+		}
+	}
+
+	return index;
+}
+
 /* CIRCUIT */
 Circuit* circuit_make(const char* name)
 {
@@ -173,6 +192,17 @@ void circuit_merge(Circuit* circ, Circuit* other)
 	circ->node_num += other->node_num;
 }
 
+void circuit_copy(Circuit* circ, Circuit* other)
+{
+	memcpy(circ, other, sizeof(Circuit));
+}
+
+void circuit_shift(Circuit* circ, Point amount)
+{
+	// Shift all nodes
+	for(u32 i=0; i<circ->node_num; ++i)
+		point_add(&circ->nodes[i].pos, amount);
+}
 
 void circuit_save(Circuit* circ, const char* path)
 {

@@ -57,7 +57,7 @@ typedef struct
 } Thing;
 
 Thing thing_find(Circuit* circ, Point pos);
-Thing thing_find_rect(Circuit* circ, i32 x, i32 y);
+u32 things_find(Circuit* circ, Rect rect, Thing* out_arr, u32 arr_size);
 
 /* CIRCUIT */
 typedef struct Circuit
@@ -72,6 +72,8 @@ typedef struct Circuit
 Circuit* circuit_make(const char* name);
 void circuit_free(Circuit* circ);
 void circuit_merge(Circuit* circ, Circuit* other);
+void circuit_copy(Circuit* circ, Circuit* other);
+void circuit_shift(Circuit* circ, Point amount);
 
 void circuit_save(Circuit* circ, const char* path);
 void circuit_load(Circuit* circ, const char* path);

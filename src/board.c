@@ -3,6 +3,7 @@
 #include "circuit.h"
 #include <stdlib.h>
 
+Circuit* clipboard;
 Node* connect_node = NULL;
 Board board;
 u32 tic_num = 0;
@@ -11,6 +12,8 @@ void board_init()
 {
 	// Make the base circuit
 	board.edit_stack[0] = circuit_make("BASE");
+
+	clipboard = circuit_make("CLIPBOARD");
 }
 
 void tic_circuit(Circuit* circ)
@@ -178,13 +181,10 @@ void board_draw()
 	else
 	{
 		// Draw visual selection box
-		i32 min_x = min(board.vis_x, board.cursor.x);
-		i32 max_x = max(board.vis_x, board.cursor.x);
-		i32 min_y = min(board.vis_y, board.cursor.y);
-		i32 max_y = max(board.vis_y, board.cursor.y);
-		for(i32 y=min_y; y<=max_y; ++y)
+		Rect vis_rect = rect(board.vis_origin, board.cursor);
+		for(i32 y=vis_rect.min.y; y<=vis_rect.max.y; ++y)
 		{
-			for(i32 x=min_x; x<=max_x; ++x)
+			for(i32 x=vis_rect.min.x; x<=vis_rect.max.x; ++x)
 			{
 				Cell* cell = cell_get(point(x, y));
 				cell->bg_color = CLR_WHITE;
@@ -201,14 +201,38 @@ void board_draw()
 	draw_edit_stack();
 }
 
+void delete_things(Circuit* circ, Thing* thing_arr, u32 count)
+{
+	for(u32 i=0; i<count; ++i)
+	{
+		switch(thing_arr[i].type)
+		{
+			case THING_Node:
+			{
+				node_delete(circ, thing_arr[i].ptr);
+				if (connect_node == thing_arr[i].ptr)
+					connect_node = NULL;
+				break;
+			}
+		}
+	}
+}
+
 void board_delete()
 {
-	Node* node = node_find(board_get_edit_circuit(), board.cursor);
-	if (node)
+	Circuit* circ = board_get_edit_circuit();
+	if (board.visual)
 	{
-		node_delete(board_get_edit_circuit(), node);
-		if (node == connect_node)
-			connect_node = NULL;
+		static Thing thing_buf[64];
+		u32 num_things = things_find(circ, rect(board.vis_origin, board.cursor), thing_buf, 64);
+
+		delete_things(circ, thing_buf, num_things);
+		board.visual = false;
+	}
+	else
+	{
+		Thing thing = thing_find(circ, board.cursor);
+		delete_things(circ, &thing, 1);
 	}
 }
 
@@ -288,6 +312,42 @@ void board_load()
 	circuit_free(loaded_circ);
 }
 
+void board_yank()
+{
+	if (board.visual)
+	{
+		Rect v_rect = rect(board.vis_origin, board.cursor);
+		circuit_copy(clipboard, board_get_edit_circuit());
+
+		// Cull everything outside of the vis-rect
+		{
+			for(u32 i=0; i<clipboard->node_num; ++i)
+			{
+				Node* node = &clipboard->nodes[i];
+				if (!point_in_rect(node->pos, v_rect))
+					node_delete(clipboard, node);
+			}
+		}
+
+		Point shift_amount = v_rect.min;
+		point_inv(&shift_amount);
+		circuit_shift(clipboard, shift_amount);
+
+		board.visual = false;
+	}
+}
+
+void board_put()
+{
+	Point shift = board.cursor;
+	circuit_shift(clipboard, shift);
+	circuit_merge(board_get_edit_circuit(), clipboard);
+
+	point_inv(&shift);
+	circuit_shift(clipboard, shift);
+
+}
+
 bool board_key_event(u32 code, char chr)
 {
 	switch(code)
@@ -295,7 +355,7 @@ bool board_key_event(u32 code, char chr)
 		case KEY_PLACE_NODE: board_place_node(); break;
 		case KEY_PLACE_INVERTER: board_place_inverter(); break;
 		case KEY_PLACE_COMMENT: board_place_comment(); break;
-		case KEY_PLACE_CHIP: board_place_chip(); break;
+		//case KEY_PLACE_CHIP: board_place_chip(); break;
 
 		//case KEY_TOGGLE_LINK: board_toggle_link(); break;
 
@@ -319,14 +379,16 @@ bool board_key_event(u32 code, char chr)
 		case KEY_VISUAL_MODE:
 		{
 			board.visual = !board.visual;
-			board.vis_x = board.cursor.x;
-			board.vis_y = board.cursor.y;
+			board.vis_origin = board.cursor;
 
 			break;
 		}
 
 		case KEY_EDIT_STEP_IN: edit_stack_step_in(); break;
 		case KEY_EDIT_STEP_OUT: edit_stack_step_out(); break;
+
+		case KEY_YANK: board_yank(); break;
+		case KEY_PUT: board_put(); break;
 
 		case KEY_SAVE: board_save(); break;
 		case KEY_LOAD: board_load(); break;
