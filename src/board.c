@@ -6,7 +6,6 @@
 Circuit* clipboard;
 Node* connect_node = NULL;
 Board board;
-u32 tic_num = 0;
 
 void board_init()
 {
@@ -16,16 +15,10 @@ void board_init()
 	clipboard = circuit_make("CLIPBOARD");
 }
 
-void tic_circuit(Circuit* circ)
-{
-}
-
 void board_tic()
 {
-	tic_num++;
-
 	// Tick the top entry on the stack first, let it trickle down through chips
-	tic_circuit(board.edit_stack[0]);
+	circuit_tic(board.edit_stack[0]);
 }
 
 void draw_edit_stack()
@@ -124,6 +117,7 @@ void draw_circuit(Circuit* circ)
 
 		Cell* cell = cell_get(node->pos);
 		cell->glyph = GLPH_NODE;
+
 		if (connect_node == node)
 		{
 			cell->fg_color = CLR_RED_1;
@@ -131,7 +125,14 @@ void draw_circuit(Circuit* circ)
 		}
 		else
 		{
-			cell->fg_color = CLR_RED_0;
+			if (node->active)
+			{
+				cell->fg_color = CLR_RED_0;
+			}
+			else
+			{
+				cell->fg_color = CLR_RED_1;
+			}
 		}
 
 		for(u32 i=0; i<4; ++i)
@@ -140,7 +141,27 @@ void draw_circuit(Circuit* circ)
 			if (!other)
 				continue;
 
-			draw_connection(node->pos.x, node->pos.y, other->pos.x, other->pos.y, true);
+			draw_connection(node->pos.x, node->pos.y, other->pos.x, other->pos.y, node->active);
+		}
+	}
+
+	// Draw inverters
+	for(u32 i=0; i < circ->inv_num; ++i)
+	{
+		Inverter* inv = &circ->inverters[i];
+		if (!inv->valid)
+			continue;
+
+		Cell* cell = cell_get(inv->pos);
+		cell->glyph = '>';
+
+		if (inv->active)
+		{
+			cell->fg_color = CLR_RED_0;
+		}
+		else
+		{
+			cell->fg_color = CLR_RED_1;
 		}
 	}
 }
@@ -214,6 +235,12 @@ void delete_things(Circuit* circ, Thing* thing_arr, u32 count)
 					connect_node = NULL;
 				break;
 			}
+
+			case THING_Inverter:
+			{
+				inverter_delete(circ, thing_arr[i].ptr);
+				break;
+			}
 		}
 	}
 }
@@ -239,11 +266,21 @@ void board_delete()
 void board_place_node()
 {
 	Circuit* circ = board_get_edit_circuit();
-
 	Node* node = node_find(circ, board.cursor);
+
+	// No node, create one
 	if (!node)
 	{
 		node = node_create(board_get_edit_circuit(), board.cursor);
+
+		// Split connections if there are any
+		Connection conn = connection_find(circ, board.cursor);
+		if (conn.a)
+		{
+			node_disconnect(circ, conn.a, conn.b);
+			node_connect(circ, conn.a, node);
+			node_connect(circ, conn.b, node);
+		}
 	}
 
 	if (connect_node)
@@ -266,6 +303,51 @@ void board_place_node()
 
 void board_place_inverter()
 {
+	Circuit* circ = board_get_edit_circuit();
+	Point pos = board.cursor;
+
+	// Split connections if there are any
+	Connection conn = connection_find(circ, board.cursor);
+	if (conn.a)
+	{
+		node_disconnect(circ, conn.a, conn.b);
+
+		// For a horizontal connection, add in-betweeny nodes
+		if (conn.a->pos.x != conn.b->pos.x)
+		{
+			Node* left_src;
+			Node* right_src;
+			if (conn.a->pos.x < conn.b->pos.x)
+			{
+				left_src = conn.a;
+				right_src = conn.b;
+			}
+			else
+			{
+				left_src = conn.b;
+				right_src = conn.a;
+			}
+
+			// Left in-betweeny
+			if (!node_find(circ, point_add(pos, point(-1, 0))))
+			{
+				Node* node = node_create(circ, point_add(pos, point(-1, 0)));
+				node_connect(circ, node, left_src);
+			}
+			// Righy betweeny
+			if (!node_find(circ, point_add(pos, point(1, 0))))
+			{
+				Node* node = node_create(circ, point_add(pos, point(1, 0)));
+				node_connect(circ, node, right_src);
+			}
+		}
+	}
+
+	// We're blocked...
+	if (thing_find(circ, pos).type != THING_Null)
+		return;
+
+	inverter_create(circ, pos);
 }
 
 void board_place_comment()
@@ -329,10 +411,7 @@ void board_yank()
 			}
 		}
 
-		Point shift_amount = v_rect.min;
-		point_inv(&shift_amount);
-		circuit_shift(clipboard, shift_amount);
-
+		circuit_shift(clipboard, point_inv(v_rect.min));
 		board.visual = false;
 	}
 }
@@ -342,10 +421,7 @@ void board_put()
 	Point shift = board.cursor;
 	circuit_shift(clipboard, shift);
 	circuit_merge(board_get_edit_circuit(), clipboard);
-
-	point_inv(&shift);
-	circuit_shift(clipboard, shift);
-
+	circuit_shift(clipboard, point_inv(shift));
 }
 
 bool board_key_event(u32 code, char chr)
