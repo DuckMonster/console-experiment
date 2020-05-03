@@ -125,7 +125,7 @@ void draw_circuit(Circuit* circ)
 		}
 		else
 		{
-			if (node->active)
+			if (node->power)
 			{
 				cell->fg_color = CLR_RED_0;
 			}
@@ -141,7 +141,7 @@ void draw_circuit(Circuit* circ)
 			if (!other)
 				continue;
 
-			draw_connection(node->pos.x, node->pos.y, other->pos.x, other->pos.y, node->active);
+			draw_connection(node->pos.x, node->pos.y, other->pos.x, other->pos.y, node->power);
 		}
 	}
 

@@ -14,3 +14,6 @@ void context_close();
 
 void context_begin_frame();
 void context_end_frame();
+
+// Current times since init in milliseconds
+float time_now();

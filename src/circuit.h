@@ -28,7 +28,7 @@ typedef struct
 	u16 generation;
 
 	bool valid;
-	bool active;
+	u32 power;
 
 	Point pos;
 	u32 tic;
@@ -44,7 +44,9 @@ Thing_Id node_id(Circuit* circ, Node* node);
 
 void node_connect(Circuit* circ, Node* a, Node* b);
 void node_disconnect(Circuit* circ, Node* a, Node* b);
-void node_activate(Circuit* circ, Node* node);
+void node_add_power(Circuit* circ, Node* node);
+void node_remove_power(Circuit* circ, Node* node);
+void node_invalidate(Circuit* circ, Node* node);
 
 /* CONNECTIONS */
 typedef struct
@@ -62,8 +64,10 @@ typedef struct
 
 	bool valid;
 	bool active;
+	bool dirty;
 
 	Point pos;
+
 	u32 tic;
 } Inverter;
 
@@ -71,6 +75,9 @@ Inverter* inverter_find(Circuit* circ, Point pos);
 Inverter* inverter_get(Circuit* circ, Thing_Id id);
 Inverter* inverter_create(Circuit* circ, Point pos);
 void inverter_delete(Circuit* circ, Inverter* inv);
+void inverter_make_dirty(Circuit* circ, Inverter* inv);
+void inverter_invalidate(Circuit* circ, Inverter* inv);
+bool inverter_clean_up(Circuit* circ, Inverter* inv);
 
 /* THINGS */
 enum Thing_Type
@@ -95,7 +102,13 @@ typedef struct Circuit
 {
 	char name[20];
 	u16 gen_num;
+
+	// Tic num used for one frames' worth of ticcing. Inverters can only tic once per frame
 	u32 tic_num;
+	// Subtic is used once per node-network update, which can be triggered multiple times per frame
+	u32 subtic_num;
+
+	u32 dirty_inverters;
 
 	Node nodes[MAX_NODES];
 	u32 node_num;

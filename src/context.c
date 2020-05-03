@@ -225,3 +225,8 @@ void context_end_frame()
 	SwapBuffers(wnd_context);
 	Sleep(1);
 }
+
+float time_now()
+{
+	return 0.f;
+}
