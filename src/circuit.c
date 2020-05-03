@@ -61,7 +61,7 @@ Node* node_create(Circuit* circ, Point pos)
 		circ->node_num = index + 1;
 
 	// Invalidate right away in case inverters are close-by
-	//node_make_dirty(circ, node);
+	node_invalidate(circ, node);
 
 	return node;
 }
@@ -152,10 +152,14 @@ void node_disconnect(Circuit* circ, Node* a, Node* b)
 	}
 }
 
-void node_add_power(Circuit* circ, Node* node)
+i32 recurse_num = 0;
+void node_add_power(Circuit* circ, Node* node, i32 recurse_id)
 {
-	// Already ticked...
-	if (node->tic == circ->subtic_num)
+	if (recurse_id == -1)
+		recurse_id = ++recurse_num;
+
+	// Already called
+	if (node->recurse == recurse_id)
 		return;
 
 	// If our state will change, make affected inverters dirty
@@ -167,23 +171,24 @@ void node_add_power(Circuit* circ, Node* node)
 	}
 
 	node->power++;
-	node->tic = circ->subtic_num;
-
-	log("Power++ (%d)", node->power);
+	node->recurse = recurse_id;
 
 	// Spread to connections
 	for(u32 i=0; i<4; ++i)
 	{
 		Node* other = node_get(circ, node->connections[i]);
 		if (other)
-			node_add_power(circ, other);
+			node_add_power(circ, other, recurse_id);
 	}
 }
 
-void node_remove_power(Circuit* circ, Node* node)
+void node_remove_power(Circuit* circ, Node* node, i32 recurse_id)
 {
+	if (recurse_id < 0)
+		recurse_id = ++recurse_num;
+
 	// Already ticked...
-	if (node->tic == circ->subtic_num)
+	if (node->recurse == recurse_id)
 		return;
 
 	// Cant decrease power below 0, somethings up...
@@ -198,46 +203,50 @@ void node_remove_power(Circuit* circ, Node* node)
 	}
 
 	node->power--;
-	node->tic = circ->subtic_num;
-
-	log("Power-- (%d)", node->power);
+	node->recurse = recurse_id;
 
 	// Spread to connections
 	for(u32 i=0; i<4; ++i)
 	{
 		Node* other = node_get(circ, node->connections[i]);
 		if (other)
-			node_remove_power(circ, other);
+			node_remove_power(circ, other, recurse_id);
+	}
+}
+
+void node_reset_power(Circuit* circ, Node* node, i32 recurse_id)
+{
+	if (recurse_id < 0)
+		recurse_id = ++recurse_num;
+
+	// Already ticked...
+	if (node->recurse == recurse_id)
+		return;
+
+	node->power = 0;
+	node->recurse = recurse_id;
+
+	Inverter* inv = inverter_find(circ, point_add(node->pos, point(1, 0)));
+	if (inv)
+		inverter_make_dirty(circ, inv);
+
+	inv = inverter_find(circ, point_add(node->pos, point(-1, 0)));
+	if (inv)
+		inverter_invalidate(circ, inv);
+
+	// Spread to connections
+	for(u32 i=0; i<4; ++i)
+	{
+		Node* other = node_get(circ, node->connections[i]);
+		if (other)
+			node_reset_power(circ, other, recurse_id);
 	}
 }
 
 void node_invalidate(Circuit* circ, Node* node)
 {
-	// Invalidating means the state of this node-network is no longer certain
-	// Its triggered when adding/removing nodes, or connections
-	if (node->tic >= circ->subtic_num)
-		return;
-
-	node->power = 0;
-	node->tic = circ->subtic_num;
-
-	// Spread to connections
-	for(u32 i=0; i<4; ++i)
-	{
-		Node* other = node_get(circ, node->connections[i]);
-		if (other)
-			node_invalidate(circ, other);
-	}
-
-	// The power of invalidated nodes is uncertain... tell source inverters to re-apply their power to the network
-	Inverter* inv = inverter_find(circ, point_add(node->pos, point(-1, 0)));
-	if (inv)
-		inverter_invalidate(circ, inv);
-
-	// Target inverters are simply made dirty
-	inv = inverter_find(circ, point_add(node->pos, point(1, 0)));
-	if (inv)
-		inverter_make_dirty(circ, inv);
+	// Reset all power
+	node_reset_power(circ, node, -1);
 }
 
 /* CONNECTIONS */
@@ -337,7 +346,7 @@ void inverter_delete(Circuit* circ, Inverter* inv)
 	{
 		Node* tar_node = node_find(circ, point_add(inv->pos, point(1, 0)));
 		if (tar_node)
-			node_remove_power(circ, tar_node);
+			node_remove_power(circ, tar_node, -1);
 	}
 
 	// Manually dec dirty counter if removing a dirty inverter
@@ -362,6 +371,8 @@ void inverter_invalidate(Circuit* circ, Inverter* inv)
 {
 	inverter_make_dirty(circ, inv);
 	inv->active = false;
+	inv->needs_reset = true;
+	circ->needs_reset = true;
 }
 
 bool inverter_clean_up(Circuit* circ, Inverter* inv)
@@ -377,6 +388,7 @@ bool inverter_clean_up(Circuit* circ, Inverter* inv)
 
 	inv->tic = circ->tic_num;
 	inv->dirty = false;
+	inv->needs_reset = false;
 	circ->dirty_inverters--;
 
 	// Update state
@@ -397,14 +409,13 @@ bool inverter_clean_up(Circuit* circ, Inverter* inv)
 		Node* tar_node = node_find(circ, point_add(inv->pos, point(1, 0)));
 		if (tar_node)
 		{
-			circ->subtic_num++;
 			if (inv->active)
 			{
-				node_add_power(circ, tar_node);
+				node_add_power(circ, tar_node, -1);
 			}
 			else
 			{
-				node_remove_power(circ, tar_node);
+				node_remove_power(circ, tar_node, -1);
 			}
 		}
 	}
@@ -477,6 +488,24 @@ void circuit_tic(Circuit* circ)
 {
 	circ->tic_num++;
 	u32 iterations = 0;
+	u32 num_cleaned_inverters = 0;
+
+	// Check if we have inverters that needs resetting...
+	// This is dirty, but when removing nodes and destroying batch integrity,
+	// we _need_ to update inverters in a certain order; first inputs then outputs.
+	// Otherwise we might get 'flashes' of inverters being active for one tic because it got updated
+	// before an input somewhere else in the system
+	if (circ->needs_reset)
+	{
+		for(u32 i=0; i<circ->inv_num; ++i)
+		{
+			Inverter* inv = &circ->inverters[i];
+			if (!inv->valid || !inv->needs_reset)
+				continue;
+
+			num_cleaned_inverters += inverter_clean_up(circ, inv);
+		}
+	}
 
 	// Update all inverters while there are dirty ones
 	while(circ->dirty_inverters)
@@ -490,8 +519,10 @@ void circuit_tic(Circuit* circ)
 			if (!inv->valid)
 				continue;
 
-			circ->subtic_num++;
-			was_cleaned |= inverter_clean_up(circ, inv);
+			bool clean = inverter_clean_up(circ, inv);
+
+			num_cleaned_inverters += clean;
+			was_cleaned |= clean;
 		}
 
 		// All dirty inverters might have already ticked, but remain dirty
@@ -500,14 +531,10 @@ void circuit_tic(Circuit* circ)
 			break;
 	}
 
-	if (iterations > 0)
+	if (num_cleaned_inverters > 0)
 	{
-		log("TIC[%d]", iterations);
+		log("TIC count=%d iter=%d", num_cleaned_inverters, iterations);
 	}
-
-	// Allow for changes after the tic, during the construction next frame before tic
-	circ->tic_num++;
-	circ->subtic_num++;
 }
 
 void circuit_merge(Circuit* circ, Circuit* other)

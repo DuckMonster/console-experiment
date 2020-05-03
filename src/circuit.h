@@ -31,7 +31,7 @@ typedef struct
 	u32 power;
 
 	Point pos;
-	u32 tic;
+	i32 recurse;
 
 	Thing_Id connections[4];
 } Node;
@@ -44,8 +44,9 @@ Thing_Id node_id(Circuit* circ, Node* node);
 
 void node_connect(Circuit* circ, Node* a, Node* b);
 void node_disconnect(Circuit* circ, Node* a, Node* b);
-void node_add_power(Circuit* circ, Node* node);
-void node_remove_power(Circuit* circ, Node* node);
+void node_add_power(Circuit* circ, Node* node, i32 recurse_id);
+void node_remove_power(Circuit* circ, Node* node, i32 recurse_id);
+void node_reset_power(Circuit* circ, Node* node, i32 recurse_id);
 void node_invalidate(Circuit* circ, Node* node);
 
 /* CONNECTIONS */
@@ -65,6 +66,7 @@ typedef struct
 	bool valid;
 	bool active;
 	bool dirty;
+	bool needs_reset;
 
 	Point pos;
 
@@ -103,12 +105,10 @@ typedef struct Circuit
 	char name[20];
 	u16 gen_num;
 
-	// Tic num used for one frames' worth of ticcing. Inverters can only tic once per frame
 	u32 tic_num;
-	// Subtic is used once per node-network update, which can be triggered multiple times per frame
-	u32 subtic_num;
 
 	u32 dirty_inverters;
+	bool needs_reset;
 
 	Node nodes[MAX_NODES];
 	u32 node_num;
