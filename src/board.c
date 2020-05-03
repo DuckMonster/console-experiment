@@ -21,6 +21,39 @@ void board_tic()
 	circuit_tic(board.edit_stack[0]);
 }
 
+void cell_draw(Point pnt, i32 glyph, i32 fg_color, i32 bg_color)
+{
+	Cell* cell = cell_get(pnt);
+	if (!cell)
+		return;
+
+	if (glyph >= 0)
+		cell->glyph = glyph;
+	if (fg_color >= 0)
+		cell->fg_color = fg_color;
+	if (bg_color >= 0)
+		cell->bg_color = bg_color;
+}
+
+void cell_draw_off(Point pnt, i32 glyph, i32 fg_color, i32 bg_color)
+{
+	cell_draw(point_sub(pnt, board.offset), glyph, fg_color, bg_color);
+}
+
+void cell_or(Point pnt, i32 or_glyph)
+{
+	Cell* cell = cell_get(pnt);
+	if (!cell)
+		return;
+
+	cell->glyph |= or_glyph;
+}
+
+void cell_or_off(Point pnt, i32 or_glyph)
+{
+	cell_or(point_sub(pnt, board.offset), or_glyph);
+}
+
 void draw_edit_stack()
 {
 	Cell* cell = cells;
@@ -55,53 +88,47 @@ void draw_edit_stack()
 	}
 }
 
-void draw_connection(i32 x1, i32 y1, i32 x2, i32 y2, bool state)
+void draw_connection(Rect rect, bool state)
 {
-	if (x1 == x2)
+	if (rect.min.x == rect.max.x)
 	{
-		i32 min_y = min(y1, y2);
-		i32 max_y = max(y1, y2);
-
-		for(i32 y=min_y+1; y<max_y; ++y)
+		i32 x = rect.min.x;
+		for(i32 y=rect.min.y + 1; y<rect.max.y; ++y)
 		{
-			Cell* cell = cell_get(point(x1, y));
+			i32 glyph = cell_glyph_get(point_sub(point(x, y), board.offset));
+
 			// Clear the cell if the glyph is not a wire
-			if (cell->glyph & ~GLPH_WIRE_X)
-				cell->glyph = 0;
+			if (glyph & ~GLPH_WIRE_X)
+				glyph = 0;
 
-			cell->glyph |= GLPH_WIRE_V;
+			glyph |= GLPH_WIRE_V;
 
+			i32 color = CLR_RED_1;
 			if (state)
-			{
-				cell->fg_color = CLR_RED_0;
-			}
-			else
-			{
-				cell->fg_color = CLR_RED_1;
-			}
+				color = CLR_RED_0;
+
+			cell_draw_off(point(x, y), glyph, color, -1);
 		}
 	}
 	else
 	{
-		i32 min_x = min(x1, x2);
-		i32 max_x = max(x1, x2);
+		i32 y = rect.min.y;
 
-		for(i32 x=min_x+1; x<max_x; ++x)
+		for(i32 x=rect.min.x + 1; x<rect.max.x; ++x)
 		{
-			Cell* cell = cell_get(point(x, y1));
-			// Clear the cell if the glyph is not a wire
-			if (cell->glyph & ~GLPH_WIRE_X)
-				cell->glyph = 0;
+			i32 glyph = cell_glyph_get(point_sub(point(x, y), board.offset));
 
-			cell->glyph |= GLPH_WIRE_H;
+			// Clear the cell if the glyph is not a wire
+			if (glyph & ~GLPH_WIRE_X)
+				glyph = 0;
+
+			glyph |= GLPH_WIRE_H;
+
+			i32 color = CLR_RED_1;
 			if (state)
-			{
-				cell->fg_color = CLR_RED_0;
-			}
-			else
-			{
-				cell->fg_color = CLR_RED_1;
-			}
+				color = CLR_RED_0;
+
+			cell_draw_off(point(x, y), glyph, color, -1);
 		}
 	}
 }
@@ -115,24 +142,14 @@ void draw_circuit(Circuit* circ)
 		if (!node->valid)
 			continue;
 
-		Cell* cell = cell_get(node->pos);
-		cell->glyph = GLPH_NODE;
-
+		cell_draw_off(node->pos, GLPH_NODE, CLR_RED_1, -1);
 		if (connect_node == node)
 		{
-			cell->fg_color = CLR_RED_1;
-			cell->bg_color = CLR_RED_0;
+			cell_draw_off(node->pos, -1, CLR_RED_1, CLR_RED_0);
 		}
-		else
+		else if (node->state)
 		{
-			if (node->power)
-			{
-				cell->fg_color = CLR_RED_0;
-			}
-			else
-			{
-				cell->fg_color = CLR_RED_1;
-			}
+			cell_draw_off(node->pos, -1, CLR_RED_0, -1);
 		}
 
 		for(u32 i=0; i<4; ++i)
@@ -141,7 +158,10 @@ void draw_circuit(Circuit* circ)
 			if (!other)
 				continue;
 
-			draw_connection(node->pos.x, node->pos.y, other->pos.x, other->pos.y, node->power);
+			u8 direction = get_direction(node->pos, other->pos);
+			cell_or_off(node->pos, direction);
+
+			draw_connection(rect(node->pos, other->pos), node->state);
 		}
 	}
 
@@ -152,17 +172,11 @@ void draw_circuit(Circuit* circ)
 		if (!inv->valid)
 			continue;
 
-		Cell* cell = cell_get(inv->pos);
-		cell->glyph = '>';
-
+		i32 color = CLR_RED_1;
 		if (inv->active)
-		{
-			cell->fg_color = CLR_RED_0;
-		}
-		else
-		{
-			cell->fg_color = CLR_RED_1;
-		}
+			color = CLR_RED_0;
+
+		cell_draw_off(inv->pos, '>', color, -1);
 	}
 }
 
@@ -171,9 +185,9 @@ void board_draw()
 	// Draw background!
 	{
 		Cell* cell_ptr = cells;
-		for(u32 y=0; y<CELL_ROWS; ++y)
+		for(i32 y=board.offset.y; y<board.offset.y + CELL_ROWS; ++y)
 		{
-			for(u32 x=0; x<CELL_COLS; ++x)
+			for(i32 x=board.offset.x; x<board.offset.x + CELL_COLS; ++x)
 			{
 				if (!(x % 10) && !(y % 10))
 					cell_ptr->glyph = '+';
@@ -195,7 +209,7 @@ void board_draw()
 
 	if (!board.visual)
 	{
-		Cell* cursor_cell = cell_get(board.cursor);
+		Cell* cursor_cell = cell_get(point_sub(board.cursor, board.offset));
 		cursor_cell->bg_color = CLR_WHITE;
 		cursor_cell->fg_color = CLR_BLACK;
 	}
@@ -203,18 +217,23 @@ void board_draw()
 	{
 		// Draw visual selection box
 		Rect vis_rect = rect(board.vis_origin, board.cursor);
+		vis_rect.min = point_sub(vis_rect.min, board.offset);
+		vis_rect.max = point_sub(vis_rect.max, board.offset);
 		for(i32 y=vis_rect.min.y; y<=vis_rect.max.y; ++y)
 		{
 			for(i32 x=vis_rect.min.x; x<=vis_rect.max.x; ++x)
 			{
 				Cell* cell = cell_get(point(x, y));
+				if (!cell)
+					continue;
+
 				cell->bg_color = CLR_WHITE;
 				cell->fg_color = CLR_BLACK;
 			}
 		}
 
 		// Draw cursor
-		Cell* cursor_cell = cell_get(board.cursor);
+		Cell* cursor_cell = cell_get(point_sub(board.cursor, board.offset));
 		cursor_cell->bg_color = CLR_ORNG_0;
 		cursor_cell->fg_color = CLR_ORNG_1;
 	}
@@ -368,8 +387,17 @@ void board_comment_write(char chr)
 
 void cursor_move(i32 dx, i32 dy)
 {
-	board.cursor.x = min(max(board.cursor.x + dx, 0), CELL_COLS - 1);
-	board.cursor.y = min(max(board.cursor.y + dy, 0), CELL_ROWS - 1);
+	board.cursor.x = board.cursor.x + dx;
+	board.cursor.y = board.cursor.y + dy;
+
+	if (board.cursor.x < board.offset.x)
+		board.offset.x = board.cursor.x;
+	if (board.cursor.y < board.offset.y)
+		board.offset.y = board.cursor.y;
+	if (board.cursor.x >= board.offset.x + CELL_COLS)
+		board.offset.x = board.cursor.x - CELL_COLS + 1;
+	if (board.cursor.y >= board.offset.y + CELL_ROWS)
+		board.offset.y = board.cursor.y - CELL_ROWS + 1;
 }
 
 void edit_stack_step_in()

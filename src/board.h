@@ -31,6 +31,7 @@ typedef struct
 {
 	bool visual;
 
+	Point offset;
 	Point vis_origin;
 	Point cursor;
 
@@ -38,7 +39,6 @@ typedef struct
 	i32 edit_index;
 } Board;
 extern Board board;
-
 
 void board_init();
 void board_tic();

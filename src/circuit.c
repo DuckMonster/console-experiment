@@ -10,6 +10,22 @@ bool id_null(Thing_Id id)
 	return false;
 }
 
+u8 get_direction(Point from, Point to)
+{
+	if (from.y == to.y)
+	{
+		if (from.x < to.x) return DIR_East;
+		if (from.x > to.x) return DIR_West;
+	}
+	else
+	{
+		if (from.y < to.y) return DIR_South;
+		if (from.y > to.y) return DIR_North;
+	}
+
+	return DIR_None;
+}
+
 /* NODES */
 Node* node_find(Circuit* circ, Point pos)
 {
@@ -32,6 +48,9 @@ Node* node_get(Circuit* circ, Thing_Id id)
 		return NULL;
 
 	if (circ->nodes[id.index].generation != id.generation)
+		return NULL;
+
+	if (!circ->nodes[id.index].valid)
 		return NULL;
 
 	return &circ->nodes[id.index];
@@ -61,7 +80,7 @@ Node* node_create(Circuit* circ, Point pos)
 		circ->node_num = index + 1;
 
 	// Invalidate right away in case inverters are close-by
-	node_invalidate(circ, node);
+	node_update_state(circ, node);
 
 	return node;
 }
@@ -76,7 +95,7 @@ void node_delete(Circuit* circ, Node* node)
 	{
 		Node* other = node_get(circ, node->connections[i]);
 		if (other)
-			node_invalidate(circ, other);
+			node_update_state(circ, other);
 	}
 
 	mem_zero(node, sizeof(Node));
@@ -134,7 +153,7 @@ void node_connect(Circuit* circ, Node* a, Node* b)
 
 	// After a connection is made, the batch is invalidated
 	// (since a and b are now connected, they will both be made dirty)
-	node_invalidate(circ, a);
+	node_update_state(circ, a);
 }
 
 void node_disconnect(Circuit* circ, Node* a, Node* b)
@@ -153,100 +172,67 @@ void node_disconnect(Circuit* circ, Node* a, Node* b)
 }
 
 i32 recurse_num = 0;
-void node_add_power(Circuit* circ, Node* node, i32 recurse_id)
+// Updates the state of a node-batch
+// If the node is on, it will spread it to its connections
+// If it isn't, it will check if any of its connections recursively are powered and set itself
+bool node_batch_contains_power(Circuit* circ, Node* node, i32 recurse_id)
 {
-	if (recurse_id == -1)
+	if (recurse_id < 0)
 		recurse_id = ++recurse_num;
 
-	// Already called
-	if (node->recurse == recurse_id)
+	if (node->recurse_id == recurse_id)
+		return false;
+
+	node->recurse_id = recurse_id;
+
+	// If we have an active inverter to our left, we have a power source!
+	Inverter* inv = inverter_find(circ, point_add(node->pos, point(-1, 0)));
+	if (inv && inv->active)
+		return true;
+
+	// Otherwise, keep searching...
+	for(u32 i=0; i<4; ++i)
+	{
+		Node* other = node_get(circ, node->connections[i]);
+		if (other && node_batch_contains_power(circ, other, recurse_id))
+			return true;
+	}
+
+	return false;
+}
+
+void node_batch_set_state(Circuit* circ, Node* node, bool active, i32 recurse_id)
+{
+	if (recurse_id < 0)
+		recurse_id = ++recurse_num;
+
+	if (node->recurse_id == recurse_id)
 		return;
 
-	// If our state will change, make affected inverters dirty
-	if (!node->power)
+	// If the state will change, make output inverters as dirty!
+	if (node->state != active)
 	{
 		Inverter* inv = inverter_find(circ, point_add(node->pos, point(1, 0)));
 		if (inv)
 			inverter_make_dirty(circ, inv);
 	}
 
-	node->power++;
-	node->recurse = recurse_id;
+	node->recurse_id = recurse_id;
+	node->state = active;
 
-	// Spread to connections
+	// Spread the state
 	for(u32 i=0; i<4; ++i)
 	{
 		Node* other = node_get(circ, node->connections[i]);
 		if (other)
-			node_add_power(circ, other, recurse_id);
+			node_batch_set_state(circ, other, active, recurse_id);
 	}
 }
 
-void node_remove_power(Circuit* circ, Node* node, i32 recurse_id)
+void node_update_state(Circuit* circ, Node* node)
 {
-	if (recurse_id < 0)
-		recurse_id = ++recurse_num;
-
-	// Already ticked...
-	if (node->recurse == recurse_id)
-		return;
-
-	// Cant decrease power below 0, somethings up...
-	assert(node->power > 0);
-
-	// If this will change the state, make affected inverters dirty
-	if (node->power == 1)
-	{
-		Inverter* inv = inverter_find(circ, point_add(node->pos, point(1, 0)));
-		if (inv)
-			inverter_make_dirty(circ, inv);
-	}
-
-	node->power--;
-	node->recurse = recurse_id;
-
-	// Spread to connections
-	for(u32 i=0; i<4; ++i)
-	{
-		Node* other = node_get(circ, node->connections[i]);
-		if (other)
-			node_remove_power(circ, other, recurse_id);
-	}
-}
-
-void node_reset_power(Circuit* circ, Node* node, i32 recurse_id)
-{
-	if (recurse_id < 0)
-		recurse_id = ++recurse_num;
-
-	// Already ticked...
-	if (node->recurse == recurse_id)
-		return;
-
-	node->power = 0;
-	node->recurse = recurse_id;
-
-	Inverter* inv = inverter_find(circ, point_add(node->pos, point(1, 0)));
-	if (inv)
-		inverter_make_dirty(circ, inv);
-
-	inv = inverter_find(circ, point_add(node->pos, point(-1, 0)));
-	if (inv)
-		inverter_invalidate(circ, inv);
-
-	// Spread to connections
-	for(u32 i=0; i<4; ++i)
-	{
-		Node* other = node_get(circ, node->connections[i]);
-		if (other)
-			node_reset_power(circ, other, recurse_id);
-	}
-}
-
-void node_invalidate(Circuit* circ, Node* node)
-{
-	// Reset all power
-	node_reset_power(circ, node, -1);
+	bool has_power = node_batch_contains_power(circ, node, -1);
+	node_batch_set_state(circ, node, has_power, -1);
 }
 
 /* CONNECTIONS */
@@ -301,6 +287,9 @@ Inverter* inverter_get(Circuit* circ, Thing_Id id)
 	if (circ->inverters[id.index].generation != id.generation)
 		return NULL;
 
+	if (!circ->inverters[id.index].valid)
+		return NULL;
+
 	return &circ->inverters[id.index];
 }
 
@@ -346,7 +335,7 @@ void inverter_delete(Circuit* circ, Inverter* inv)
 	{
 		Node* tar_node = node_find(circ, point_add(inv->pos, point(1, 0)));
 		if (tar_node)
-			node_remove_power(circ, tar_node, -1);
+			node_update_state(circ, tar_node);
 	}
 
 	// Manually dec dirty counter if removing a dirty inverter
@@ -367,14 +356,6 @@ void inverter_make_dirty(Circuit* circ, Inverter* inv)
 	circ->dirty_inverters++;
 }
 
-void inverter_invalidate(Circuit* circ, Inverter* inv)
-{
-	inverter_make_dirty(circ, inv);
-	inv->active = false;
-	inv->needs_reset = true;
-	circ->needs_reset = true;
-}
-
 bool inverter_clean_up(Circuit* circ, Inverter* inv)
 {
 	if (!inv->dirty)
@@ -388,14 +369,13 @@ bool inverter_clean_up(Circuit* circ, Inverter* inv)
 
 	inv->tic = circ->tic_num;
 	inv->dirty = false;
-	inv->needs_reset = false;
 	circ->dirty_inverters--;
 
 	// Update state
 	Node* src_node = node_find(circ, point_add(inv->pos, point(-1, 0)));
 	if (src_node)
 	{
-		inv->active = !src_node->power;
+		inv->active = !src_node->state;
 	}
 	else
 	{
@@ -409,14 +389,7 @@ bool inverter_clean_up(Circuit* circ, Inverter* inv)
 		Node* tar_node = node_find(circ, point_add(inv->pos, point(1, 0)));
 		if (tar_node)
 		{
-			if (inv->active)
-			{
-				node_add_power(circ, tar_node, -1);
-			}
-			else
-			{
-				node_remove_power(circ, tar_node, -1);
-			}
+			node_update_state(circ, tar_node);
 		}
 	}
 
@@ -489,23 +462,6 @@ void circuit_tic(Circuit* circ)
 	circ->tic_num++;
 	u32 iterations = 0;
 	u32 num_cleaned_inverters = 0;
-
-	// Check if we have inverters that needs resetting...
-	// This is dirty, but when removing nodes and destroying batch integrity,
-	// we _need_ to update inverters in a certain order; first inputs then outputs.
-	// Otherwise we might get 'flashes' of inverters being active for one tic because it got updated
-	// before an input somewhere else in the system
-	if (circ->needs_reset)
-	{
-		for(u32 i=0; i<circ->inv_num; ++i)
-		{
-			Inverter* inv = &circ->inverters[i];
-			if (!inv->valid || !inv->needs_reset)
-				continue;
-
-			num_cleaned_inverters += inverter_clean_up(circ, inv);
-		}
-	}
 
 	// Update all inverters while there are dirty ones
 	while(circ->dirty_inverters)

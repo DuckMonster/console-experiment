@@ -20,18 +20,25 @@ enum Direction
 	DIR_West	= 0x4,
 	DIR_South	= 0x8,
 };
-u8 get_direction(i32 x1, i32 y1, i32 x2, i32 y2);
+u8 get_direction(Point from, Point to);
 
 /* NODES */
+enum Node_State
+{
+	STATE_Off,
+	STATE_On,
+	STATE_Powered,
+};
+
 typedef struct
 {
 	u16 generation;
 
 	bool valid;
-	u32 power;
+	u8 state;
 
 	Point pos;
-	i32 recurse;
+	i32 recurse_id;
 
 	Thing_Id connections[4];
 } Node;
@@ -42,12 +49,10 @@ Node* node_create(Circuit* circ, Point pos);
 void node_delete(Circuit* circ, Node* node);
 Thing_Id node_id(Circuit* circ, Node* node);
 
+void node_update_state(Circuit* circ, Node* node);
+
 void node_connect(Circuit* circ, Node* a, Node* b);
 void node_disconnect(Circuit* circ, Node* a, Node* b);
-void node_add_power(Circuit* circ, Node* node, i32 recurse_id);
-void node_remove_power(Circuit* circ, Node* node, i32 recurse_id);
-void node_reset_power(Circuit* circ, Node* node, i32 recurse_id);
-void node_invalidate(Circuit* circ, Node* node);
 
 /* CONNECTIONS */
 typedef struct
@@ -66,7 +71,6 @@ typedef struct
 	bool valid;
 	bool active;
 	bool dirty;
-	bool needs_reset;
 
 	Point pos;
 
@@ -106,9 +110,7 @@ typedef struct Circuit
 	u16 gen_num;
 
 	u32 tic_num;
-
 	u32 dirty_inverters;
-	bool needs_reset;
 
 	Node nodes[MAX_NODES];
 	u32 node_num;

@@ -2,10 +2,10 @@
 
 #define CLR_BLACK 0x0;
 #define CLR_WHITE 0x1;
-#define CLR_RED_0 (0x8 + 0x0);
-#define CLR_RED_1 (0x8 + 0x1);
-#define CLR_ORNG_0 (0x8 + 0x6);
-#define CLR_ORNG_1 (0x8 + 0x7);
+#define CLR_RED_0 (0x8 + 0x0)
+#define CLR_RED_1 (0x8 + 0x1)
+#define CLR_ORNG_0 (0x8 + 0x6)
+#define CLR_ORNG_1 (0x8 + 0x7)
 
 #define GLPH_NODE (0x90)
 #define GLPH_WIRE (0xA0)
@@ -32,4 +32,18 @@ extern Cell* cells;
 
 void cells_init();
 void cells_render();
-inline Cell* cell_get(Point pos) { return &cells[pos.x + pos.y * CELL_COLS]; }
+inline i32 cell_glyph_get(Point pos)
+{
+	if (pos.x < 0 || pos.y < 0 || pos.x >= CELL_COLS || pos.y >= CELL_ROWS)
+		return -1;
+
+	return cells[pos.x + pos.y * CELL_COLS].glyph;
+}
+
+inline Cell* cell_get(Point pos)
+{
+	if (pos.x < 0 || pos.y < 0 || pos.x >= CELL_COLS || pos.y >= CELL_ROWS)
+		return NULL;
+
+	return &cells[pos.x + pos.y * CELL_COLS];
+}
