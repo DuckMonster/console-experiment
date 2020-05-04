@@ -1,7 +1,8 @@
 #pragma once
 #define MAX_NODES 256
 #define MAX_INVERTERS 256
-#define MAX_LINKS 8
+#define MAX_CHIPS 8
+#define MAX_PUBLIC_NODES 32
 
 typedef struct Circuit Circuit;
 typedef struct
@@ -23,6 +24,13 @@ enum Direction
 u8 get_direction(Point from, Point to);
 
 /* NODES */
+enum Node_Link_Type
+{
+	LINK_None,
+	LINK_Public,
+	LINK_Chip,
+};
+
 enum Node_State
 {
 	STATE_Off,
@@ -40,6 +48,10 @@ typedef struct
 	Point pos;
 	i32 recurse_id;
 
+	u8 link_type;
+	Thing_Id link_chip;
+	u32 link_index;
+
 	Thing_Id connections[4];
 } Node;
 
@@ -50,6 +62,7 @@ void node_delete(Circuit* circ, Node* node);
 Thing_Id node_id(Circuit* circ, Node* node);
 
 void node_update_state(Circuit* circ, Node* node);
+void node_toggle_public(Circuit* circ, Node* node);
 
 void node_connect(Circuit* circ, Node* a, Node* b);
 void node_disconnect(Circuit* circ, Node* a, Node* b);
@@ -78,12 +91,31 @@ typedef struct
 } Inverter;
 
 Inverter* inverter_find(Circuit* circ, Point pos);
-Inverter* inverter_get(Circuit* circ, Thing_Id id);
 Inverter* inverter_create(Circuit* circ, Point pos);
 void inverter_delete(Circuit* circ, Inverter* inv);
 void inverter_make_dirty(Circuit* circ, Inverter* inv);
 void inverter_invalidate(Circuit* circ, Inverter* inv);
 bool inverter_clean_up(Circuit* circ, Inverter* inv);
+
+/* CHIP */
+typedef struct 
+{
+	u16 generation;
+
+	bool valid;
+	Point pos;
+
+	Circuit* circuit;
+	Thing_Id link_nodes[MAX_PUBLIC_NODES];
+} Chip;
+
+Chip* chip_find(Circuit* circ, Point pos);
+Chip* chip_get(Circuit* circ, Thing_Id id);
+Chip* chip_create(Circuit* circ, Point pos);
+Thing_Id chip_id(Circuit* circ, Chip* chip);
+void chip_delete(Circuit* circ, Chip* chip);
+
+void chip_update(Circuit* circ, Chip* chip);
 
 /* THINGS */
 enum Thing_Type
@@ -117,6 +149,11 @@ typedef struct Circuit
 
 	Inverter inverters[MAX_INVERTERS];
 	u32 inv_num;
+
+	Chip chips[MAX_CHIPS];
+	u32 chip_num;
+
+	Thing_Id public_nodes[MAX_PUBLIC_NODES];
 } Circuit;
 
 Circuit* circuit_make(const char* name);
@@ -130,3 +167,6 @@ void circuit_shift(Circuit* circ, Point amount);
 
 void circuit_save(Circuit* circ, const char* path);
 void circuit_load(Circuit* circ, const char* path);
+
+bool circuit_get_public_state(Circuit* circ, u32 index);
+void circuit_set_public_state(Circuit* circ, u32 index, bool state);

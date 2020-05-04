@@ -2,6 +2,9 @@
 #include "gl_bind.h"
 #include "board.h"
 
+#define KEY_CTRL 0x1D
+#define KEY_SHIFT 0x2A
+
 Context context;
 
 HWND wnd_handle;
@@ -11,6 +14,8 @@ HGLRC gl_context;
 bool class_was_registered = false;
 const LPCSTR class_name = "WindowClass";
 bool is_open = false;
+
+u32 key_mod_flags = 0;
 
 // Structs for handing events
 // WM_KEYDOWN & WM_KEYUP
@@ -56,12 +61,30 @@ LRESULT CALLBACK wnd_proc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 			Win_Key_Params* key = (Win_Key_Params*)&lparam;
 			log("KEYDOWN: 0x%x", key->scancode);
 
-			if (board_key_event(key->scancode, wparam))
+			if (key->scancode == KEY_CTRL)
+				key_mod_flags |= MODK_CTRL;
+			if (key->scancode == KEY_SHIFT)
+				key_mod_flags |= MODK_SHIFT;
+
+			if (board_key_event(key->scancode, wparam, key_mod_flags))
 				break;
 
 			// Quit on escape
 			//if (key->scancode == 0x01)
 				//SendMessage(wnd, WM_CLOSE, 0, 0);
+
+			break;
+		}
+
+		// Key Up
+		case WM_KEYUP:
+		{
+			Win_Key_Params* key = (Win_Key_Params*)&lparam;
+
+			if (key->scancode == KEY_CTRL)
+				key_mod_flags &= ~MODK_CTRL;
+			if (key->scancode == KEY_SHIFT)
+				key_mod_flags &= ~MODK_SHIFT;
 
 			break;
 		}

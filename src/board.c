@@ -1,6 +1,8 @@
 #include "board.h"
 #include "cells.h"
 #include "circuit.h"
+#include "context.h"
+#include "prompt.h"
 #include <stdlib.h>
 
 Circuit* clipboard;
@@ -11,7 +13,6 @@ void board_init()
 {
 	// Make the base circuit
 	board.edit_stack[0] = circuit_make("BASE");
-
 	clipboard = circuit_make("CLIPBOARD");
 }
 
@@ -21,23 +22,9 @@ void board_tic()
 	circuit_tic(board.edit_stack[0]);
 }
 
-void cell_draw(Point pnt, i32 glyph, i32 fg_color, i32 bg_color)
-{
-	Cell* cell = cell_get(pnt);
-	if (!cell)
-		return;
-
-	if (glyph >= 0)
-		cell->glyph = glyph;
-	if (fg_color >= 0)
-		cell->fg_color = fg_color;
-	if (bg_color >= 0)
-		cell->bg_color = bg_color;
-}
-
 void cell_draw_off(Point pnt, i32 glyph, i32 fg_color, i32 bg_color)
 {
-	cell_draw(point_sub(pnt, board.offset), glyph, fg_color, bg_color);
+	cell_set(point_sub(pnt, board.offset), glyph, fg_color, bg_color);
 }
 
 void cell_or(Point pnt, i32 or_glyph)
@@ -57,33 +44,15 @@ void cell_or_off(Point pnt, i32 or_glyph)
 void draw_edit_stack()
 {
 	Cell* cell = cells;
+	Point pos = point(0, 0);
+
 	for(i32 i=0; i<=board.edit_index; ++i)
 	{
 		Circuit* circ = board.edit_stack[i];
-		u32 name_len = (u32)strlen(circ->name);
-
-		for(u32 c=0; c<name_len; ++c)
+		pos = cell_write_str(pos, circ->name, CLR_WHITE, CLR_BLACK);
+		if (i < board.edit_index)
 		{
-			cell->bg_color = CLR_BLACK;
-			cell->fg_color = CLR_WHITE;
-			cell->glyph = circ->name[c];
-			cell++;
-		}
-
-		if (i != board.edit_index)
-		{
-			cell->bg_color = CLR_BLACK;
-			cell->fg_color = CLR_WHITE;
-			cell->glyph = ' ';
-			cell++;
-			cell->bg_color = CLR_BLACK;
-			cell->fg_color = CLR_WHITE;
-			cell->glyph = '>';
-			cell++;
-			cell->bg_color = CLR_BLACK;
-			cell->fg_color = CLR_WHITE;
-			cell->glyph = ' ';
-			cell++;
+			pos = cell_write_str(pos, " >> ", CLR_WHITE, CLR_BLACK);
 		}
 	}
 }
@@ -147,9 +116,14 @@ void draw_circuit(Circuit* circ)
 		{
 			cell_draw_off(node->pos, -1, CLR_RED_1, CLR_RED_0);
 		}
-		else if (node->state)
+		else
 		{
-			cell_draw_off(node->pos, -1, CLR_RED_0, -1);
+			if (node->state)
+				cell_draw_off(node->pos, -1, CLR_RED_0, -1);
+			if (node->link_type == LINK_Public)
+				cell_draw_off(node->pos, -1, -1, CLR_ORNG_1);
+			if (node->link_type == LINK_Chip)
+				cell_draw_off(node->pos, -1, -1, CLR_BLUE_0);
 		}
 
 		for(u32 i=0; i<4; ++i)
@@ -178,6 +152,22 @@ void draw_circuit(Circuit* circ)
 
 		cell_draw_off(inv->pos, '>', color, -1);
 	}
+
+	// Draw chips
+	for(u32 i=0; i<circ->chip_num; ++i)
+	{
+		Chip* chip = &circ->chips[i];
+		if (!chip->valid)
+			continue;
+
+		for(i32 y=chip->pos.y; y<=chip->pos.y + 5; ++y)
+		{
+			for(i32 x=chip->pos.x; x<=chip->pos.x + 5; ++x)
+			{
+				cell_draw_off(point(x, y), ' ', CLR_WHITE, CLR_BLACK);
+			}
+		}
+	}
 }
 
 void board_draw()
@@ -198,8 +188,8 @@ void board_draw()
 				else
 					cell_ptr->glyph = ' ';
 
-				cell_ptr->bg_color = 8 + 5;
-				cell_ptr->fg_color = 8 + 4;
+				cell_ptr->bg_color = CLR_BLUE_1;
+				cell_ptr->fg_color = CLR_BLUE_0;
 				cell_ptr++;
 			}
 		}
@@ -375,10 +365,17 @@ void board_place_comment()
 
 void board_place_chip()
 {
+	chip_create(board_get_edit_circuit(), board.cursor);
 }
 
-void board_toggle_link()
+void board_toggle_public()
 {
+	Circuit* circ = board_get_edit_circuit();
+	Node* node = node_find(circ, board.cursor);
+	if (!node)
+		return;
+
+	node_toggle_public(circ, node);
 }
 
 void board_comment_write(char chr)
@@ -402,10 +399,17 @@ void cursor_move(i32 dx, i32 dy)
 
 void edit_stack_step_in()
 {
+	Chip* chip = chip_find(board_get_edit_circuit(), board.cursor);
+	if (chip)
+		board.edit_stack[++board.edit_index] = chip->circuit;
 }
 
 void edit_stack_step_out()
 {
+	if (board.edit_index == 0)
+		return;
+
+	board.edit_index--;
 }
 
 void board_save()
@@ -452,54 +456,64 @@ void board_put()
 	circuit_shift(clipboard, point_inv(shift));
 }
 
-bool board_key_event(u32 code, char chr)
+bool board_key_event(u32 code, char chr, u32 mods)
 {
-	switch(code)
+	if (!mods)
 	{
-		case KEY_PLACE_NODE: board_place_node(); break;
-		case KEY_PLACE_INVERTER: board_place_inverter(); break;
-		case KEY_PLACE_COMMENT: board_place_comment(); break;
-		//case KEY_PLACE_CHIP: board_place_chip(); break;
-
-		//case KEY_TOGGLE_LINK: board_toggle_link(); break;
-
-		case KEY_DELETE: board_delete(); break;
-		case KEY_CANCEL: 
+		switch(code)
 		{
-			// Exit visual mode
-			if (board.visual)
+			case KEY_PLACE_NODE: board_place_node(); break;
+			case KEY_PLACE_INVERTER: board_place_inverter(); break;
+			//case KEY_PLACE_COMMENT: board_place_comment(); break;
+			case KEY_PLACE_CHIP: board_place_chip(); break;
+
+			case KEY_DELETE: board_delete(); break;
+			case KEY_CANCEL: 
 			{
-				board.visual = false;
+				// Exit visual mode
+				if (board.visual)
+				{
+					board.visual = false;
+					break;
+				}
+
+				return false;
+			}
+			case KEY_MOVE_LEFT: cursor_move(-1, 0); break;
+			case KEY_MOVE_DOWN: cursor_move(0, 1); break;
+			case KEY_MOVE_UP: cursor_move(0, -1); break;
+			case KEY_MOVE_RIGHT: cursor_move(1, 0); break;
+
+			case KEY_VISUAL_MODE:
+			{
+				board.visual = !board.visual;
+				board.vis_origin = board.cursor;
+
 				break;
 			}
 
-			return false;
-		}
-		case KEY_MOVE_LEFT: cursor_move(-1, 0); break;
-		case KEY_MOVE_DOWN: cursor_move(0, 1); break;
-		case KEY_MOVE_UP: cursor_move(0, -1); break;
-		case KEY_MOVE_RIGHT: cursor_move(1, 0); break;
+			case KEY_YANK: board_yank(); break;
+			case KEY_PUT: board_put(); break;
 
-		case KEY_VISUAL_MODE:
+			case KEY_TIC: board_tic(); break;
+
+			default: return false;
+		}
+	}
+	if (mods == MODK_CTRL)
+	{
+		switch(code)
 		{
-			board.visual = !board.visual;
-			board.vis_origin = board.cursor;
+			case KEY_MOVE_RIGHT: edit_stack_step_in(); break;
+			case KEY_MOVE_LEFT: edit_stack_step_out(); break;
 
-			break;
+			case KEY_TOGGLE_PUBLIC: board_toggle_public(); break;
+
+			case KEY_SAVE: board_save(); break;
+			case KEY_LOAD: board_load(); break;
+
+			case KEY_DELETE: prompt_msg("Error", "This is an error"); break;
 		}
-
-		case KEY_EDIT_STEP_IN: edit_stack_step_in(); break;
-		case KEY_EDIT_STEP_OUT: edit_stack_step_out(); break;
-
-		case KEY_YANK: board_yank(); break;
-		case KEY_PUT: board_put(); break;
-
-		case KEY_SAVE: board_save(); break;
-		case KEY_LOAD: board_load(); break;
-
-		case KEY_TIC: board_tic(); break;
-
-		default: return false;
 	}
 
 	return true;

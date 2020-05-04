@@ -1,9 +1,11 @@
 #pragma once
 
-#define CLR_BLACK 0x0;
-#define CLR_WHITE 0x1;
+#define CLR_BLACK 0x0
+#define CLR_WHITE 0x1
 #define CLR_RED_0 (0x8 + 0x0)
 #define CLR_RED_1 (0x8 + 0x1)
+#define CLR_BLUE_0 (0x8 + 0x4)
+#define CLR_BLUE_1 (0x8 + 0x5)
 #define CLR_ORNG_0 (0x8 + 0x6)
 #define CLR_ORNG_1 (0x8 + 0x7)
 
@@ -32,6 +34,9 @@ extern Cell* cells;
 
 void cells_init();
 void cells_render();
+void cell_set(Point pos, i32 glyph, i32 fg_color, i32 bg_color);
+Point cell_write_str(Point pos, const char* str, i32 fg_color, i32 bg_color);
+
 inline i32 cell_glyph_get(Point pos)
 {
 	if (pos.x < 0 || pos.y < 0 || pos.x >= CELL_COLS || pos.y >= CELL_ROWS)

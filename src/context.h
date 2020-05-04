@@ -1,5 +1,12 @@
 #pragma once
 
+enum Mod_Keys
+{
+	MODK_CTRL = 1 << 1,
+	MODK_SHIFT = 1 << 2,
+	MODK_ALT = 1 << 3,
+};
+
 typedef struct
 {
 	i32 x;

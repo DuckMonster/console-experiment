@@ -172,3 +172,29 @@ void cells_render()
 	glUseProgram(program);
 	glDrawArraysInstanced(GL_TRIANGLES, 0, 6, CELL_COLS * CELL_ROWS);
 }
+
+void cell_set(Point pos, i32 glyph, i32 fg_color, i32 bg_color)
+{
+	Cell* cell = cell_get(pos);
+	if (!cell)
+		return;
+
+	if (glyph >= 0)
+		cell->glyph = glyph;
+	if (fg_color >= 0)
+		cell->fg_color = fg_color;
+	if (bg_color >= 0)
+		cell->bg_color = bg_color;
+}
+
+Point cell_write_str(Point pos, const char* str, i32 fg_color, i32 bg_color)
+{
+	u32 len = (u32)strlen(str);
+	for(u32 i=0; i<len; ++i)
+	{
+		cell_set(pos, str[i], fg_color, bg_color);
+		pos.x++;
+	}
+
+	return pos;
+}
