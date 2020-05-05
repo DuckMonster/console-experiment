@@ -673,11 +673,13 @@ void circuit_merge(Circuit* circ, Circuit* other)
 	// Make sure they actually fit..
 	assert((circ->node_num) + (other->node_num) < MAX_NODES);
 	assert((circ->inv_num) + (other->inv_num) < MAX_INVERTERS);
+	assert((circ->chip_num) + (other->chip_num) < MAX_INVERTERS);
 
 	// We will put all of the nodes after the last node of the target
 	// (+1 since node_last is the index of the last node, not the count)
 	memcpy(circ->nodes + circ->node_num, other->nodes, sizeof(Node) * (other->node_num));
 	memcpy(circ->inverters + circ->inv_num, other->inverters, sizeof(Inverter) * (other->inv_num));
+	memcpy(circ->chips + circ->chip_num, other->chips, sizeof(Chip) * (other->chip_num));
 
 	// After that we have to update all of the connection ID's, since the indecies have been shifted
 	for(u32 i=circ->node_num; i<circ->node_num + other->node_num; ++i)
@@ -687,10 +689,14 @@ void circuit_merge(Circuit* circ, Circuit* other)
 			circ->nodes[i].connections[c].index += circ->node_num;
 	}
 
+	// Merge public nodes
+	memcpy(circ->public_nodes, other->public_nodes, sizeof(circ->public_nodes));
+
 	// Avoid repeat generation
 	circ->gen_num = max(circ->gen_num, other->gen_num);
 	circ->node_num += other->node_num;
 	circ->inv_num += other->inv_num;
+	circ->chip_num += other->chip_num;
 }
 
 void circuit_copy(Circuit* circ, Circuit* other)
@@ -709,13 +715,79 @@ void circuit_shift(Circuit* circ, Point amount)
 		circ->inverters[i].pos = point_add(circ->inverters[i].pos, amount);
 }
 
+#define fwrite_t(expr, file) (fwrite(&expr, sizeof(expr), 1, file))
+#define fread_t(expr, file) (fread(&expr, sizeof(expr), 1, file))
+
+void circuit_fwrite(Circuit* circ, FILE* file)
+{
+	fwrite_t(circ->name, file);
+	fwrite_t(circ->gen_num, file);
+	fwrite_t(circ->dirty_inverters, file);
+
+	// Write nodes
+	fwrite_t(circ->node_num, file);
+	fwrite(circ->nodes, sizeof(Node), circ->node_num, file);
+
+	// Write inverters
+	fwrite_t(circ->inv_num, file);
+	fwrite(circ->inverters, sizeof(Inverter), circ->inv_num, file);
+
+	// Write chips
+	fwrite_t(circ->chip_num, file);
+	for(u32 i=0; i<circ->chip_num; ++i)
+	{
+		Chip* chip = &circ->chips[i];
+		fwrite(chip, sizeof(Chip), 1, file);
+
+		if (chip->valid)
+			circuit_fwrite(chip->circuit, file);
+	}
+
+	// Write public nodes
+	fwrite_t(circ->public_nodes, file);
+}
+
+void circuit_fread(Circuit* circ, FILE* file)
+{
+	mem_zero(circ, sizeof(Circuit));
+
+	fread_t(circ->name, file);
+	fread_t(circ->gen_num, file);
+	fread_t(circ->dirty_inverters, file);
+
+	// Read nodes
+	fread_t(circ->node_num, file);
+	fread(circ->nodes, sizeof(Node), circ->node_num, file);
+
+	// Read inverters
+	fread_t(circ->inv_num, file);
+	fread(circ->inverters, sizeof(Inverter), circ->inv_num, file);
+
+	// Read chips
+	fread_t(circ->chip_num, file);
+	for(u32 i=0; i<circ->chip_num; ++i)
+	{
+		Chip* chip = &circ->chips[i];
+		fread(chip, sizeof(Chip), 1, file);
+
+		if (chip->valid)
+		{	
+			chip->circuit = circuit_make("");
+			circuit_fread(chip->circuit, file);
+		}
+	}
+
+	// Read public nodes
+	fread_t(circ->public_nodes, file);
+}
+
 void circuit_save(Circuit* circ, const char* path)
 {
 	FILE* file = fopen(path, "wb");
 	assert(file != NULL);
 
-	u32 bytes_written = (u32)fwrite(circ, 1, sizeof(Circuit), file);
-	fclose(file);
+	circuit_fwrite(circ, file);
+	u32 bytes_written = ftell(file);
 
 	log("Saved to '%s'; %dB written", path, bytes_written);
 }
@@ -729,9 +801,8 @@ void circuit_load(Circuit* circ, const char* path)
 		return;
 	}
 
-	mem_zero(circ, sizeof(Circuit));
-
-	u32 bytes_read = (u32)fread(circ, 1, sizeof(Circuit), file);
+	circuit_fread(circ, file);
+	u32 bytes_read = ftell(file);
 	fclose(file);
 
 	log("Loaded '%s'; %d bytes read", path, bytes_read);

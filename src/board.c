@@ -419,11 +419,8 @@ void board_save()
 
 void board_load()
 {
-	Circuit* loaded_circ = circuit_make("TEMP");
-	circuit_load(loaded_circ, "res/test.circ");
-	circuit_merge(board_get_edit_circuit(), loaded_circ);
-
-	circuit_free(loaded_circ);
+	circuit_load(board_get_edit_circuit(), "res/test.circ");
+	board.edit_index = 0;
 }
 
 void board_yank()
