@@ -1,4 +1,5 @@
 #pragma once
+#define MAX_THINGS 256
 #define MAX_NODES 256
 #define MAX_INVERTERS 256
 #define MAX_CHIPS 8
@@ -23,6 +24,41 @@ enum Direction
 };
 u8 get_direction(Point from, Point to);
 
+/* THINGS */
+enum Thing_Type
+{
+	THING_Null = 0,
+	THING_Node = 1 << 0,
+	THING_Inverter = 1 << 1,
+	THING_Chip = 1 << 2,
+	THING_All = ~0
+};
+
+#define THING_IMPL()\
+u32 generation;\
+u8 type;\
+bool valid;\
+\
+Point pos;\
+Point size\
+
+typedef struct
+{
+	THING_IMPL();
+
+	// Padding data used by the different types of things
+	u8 data[40];
+} Thing;
+
+Thing* thing_create(Circuit* circ, u8 type, Point pos);
+Thing* thing_find(Circuit* circ, Point pos, u8 type_mask);
+Thing* thing_get(Circuit* circ, Thing_Id id);
+Thing_Id thing_id(Circuit* circ, Thing* thing);
+u32 things_find(Circuit* circ, Rect rect, Thing** out_arr, u32 arr_size);
+bool _thing_it_inc(Circuit* circ, Thing** thing, u8 type_mask);
+
+#define THINGS_FOREACH(circ, type_mask) for(Thing* it = circ->things; _thing_it_inc(circ, &it, (type_mask)); it++)
+
 /* NODES */
 enum Node_Link_Type
 {
@@ -40,12 +76,9 @@ enum Node_State
 
 typedef struct
 {
-	u16 generation;
+	THING_IMPL();
 
-	bool valid;
 	u8 state;
-
-	Point pos;
 	i32 recurse_id;
 
 	u8 link_type;
@@ -59,7 +92,6 @@ Node* node_find(Circuit* circ, Point pos);
 Node* node_get(Circuit* circ, Thing_Id id);
 Node* node_create(Circuit* circ, Point pos);
 void node_delete(Circuit* circ, Node* node);
-Thing_Id node_id(Circuit* circ, Node* node);
 
 void node_update_state(Circuit* circ, Node* node);
 void node_toggle_public(Circuit* circ, Node* node);
@@ -117,24 +149,6 @@ void chip_delete(Circuit* circ, Chip* chip);
 
 void chip_update(Circuit* circ, Chip* chip);
 
-/* THINGS */
-enum Thing_Type
-{
-	THING_Null,
-	THING_Node,
-	THING_Inverter,
-	THING_Chip,
-};
-
-typedef struct
-{
-	u8 type;
-	void* ptr;
-} Thing;
-
-Thing thing_find(Circuit* circ, Point pos);
-u32 things_find(Circuit* circ, Rect rect, Thing* out_arr, u32 arr_size);
-
 /* CIRCUIT */
 typedef struct Circuit
 {
@@ -144,8 +158,8 @@ typedef struct Circuit
 	u32 tic_num;
 	u32 dirty_inverters;
 
-	Node nodes[MAX_NODES];
-	u32 node_num;
+	Thing things[MAX_THINGS];
+	u32 thing_num;
 
 	Inverter inverters[MAX_INVERTERS];
 	u32 inv_num;

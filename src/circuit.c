@@ -28,59 +28,135 @@ u8 get_direction(Point from, Point to)
 	return DIR_None;
 }
 
-/* NODES */
-Node* node_find(Circuit* circ, Point pos)
+/* THINGS */
+Thing* thing_create(Circuit* circ, u8 type, Point pos)
 {
-	Node* node = NULL;
-	for(u32 i=0; i < circ->node_num; i++)
+	Thing* thing = NULL;
+	for(u32 i=0; i<MAX_THINGS; ++i)
 	{
-		if (circ->nodes[i].valid && point_eq(circ->nodes[i].pos, pos))
+		if (circ->things[i].valid)
+			continue;
+
+		thing = &circ->things[i];
+		break;
+	}
+
+	assert(thing);
+
+	thing->generation = ++circ->gen_num;
+	thing->type = type;
+	thing->valid = true;
+	thing->pos = pos;
+	thing->size = point(1, 1);
+
+	u32 index = thing - circ->things;
+	if (index >= circ->thing_num)
+		circ->thing_num = index + 1;
+
+	return thing;
+}
+
+Thing* thing_find(Circuit* circ, Point pos, u8 type_mask)
+{
+	THINGS_FOREACH(circ, type_mask)
+	{
+		if (point_eq(it->pos, pos))
+			return it;
+	}
+
+	return NULL;
+}
+
+Thing* thing_get(Circuit* circ, Thing_Id id)
+{
+	if (id.generation == 0)
+		return NULL;
+
+	Thing* thing = &circ->things[id.index];
+	if (!thing->valid)
+		return NULL;
+
+	if (thing->generation != id.generation)
+		return NULL;
+
+	return thing;
+}
+
+Thing_Id thing_id(Circuit* circ, Thing* thing)
+{
+	Thing_Id id;
+	if (thing == NULL)
+	{
+		id.generation = 0;
+		id.index = 0;
+	}
+	else
+	{
+		id.index = thing - circ->things;
+		id.generation = thing->generation;
+	}
+
+	return id;
+}
+
+bool _thing_it_inc(Circuit* circ, Thing** thing, u8 type_mask)
+{
+	if (*thing == NULL)
+		return false;
+
+	u32 index = *thing - circ->things;
+	while(index < circ->thing_num)
+	{
+		if (circ->things[index].valid)
+			return true;
+
+		*thing++;
+		index++;
+	}
+
+	return false;
+}
+
+u32 things_find(Circuit* circ, Rect rect, Thing** out_arr, u32 arr_size)
+{
+	/*
+	u32 index = 0;
+
+	for(i32 y=rect.min.y; y<=rect.max.y; ++y)
+	{
+		for(i32 x=rect.min.x; x<=rect.max.x; ++x)
 		{
-			node = &circ->nodes[i];
-			break;
+			Thing thing = thing_find(circ, point(x, y));
+			if (thing.type != THING_Null)
+			{
+				out_arr[index++] = thing;
+				if (index == arr_size)
+					break;
+			}
 		}
 	}
 
-	return node;
+	return index;
+	*/
+	return 0;
+}
+
+
+/* NODES */
+Node* node_find(Circuit* circ, Point pos)
+{
+	return (Node*)thing_find(circ, pos, THING_Node);
 }
 
 Node* node_get(Circuit* circ, Thing_Id id)
 {
-	if (id_null(id))
-		return NULL;
-
-	Node* node = &circ->nodes[id.index];
-	if (node->generation != id.generation)
-		return NULL;
-
-	if (!node->valid)
-		return NULL;
-
-	return node;
+	return (Node*)thing_get(circ, id);
 }
 
 Node* node_create(Circuit* circ, Point pos)
 {
-	assert(!node_find(circ, pos));
-
-	Node* node = NULL;
-	for(u32 i=0; i < MAX_NODES; ++i)
-	{
-		if (circ->nodes[i].valid)
-			continue;
-
-		node = &circ->nodes[i];
-		break;
-	}
-
-	assert(node);
-	node->generation = ++circ->gen_num;
-	node->valid = true;
-	node->pos = pos;
-
-	u32 index = node - circ->nodes;
-	if (index >= circ->node_num)
-		circ->node_num = index + 1;
+	assert(sizeof(Node) <= sizeof(Thing));
+	Node* node = (Node*)thing_create(circ, THING_Node, pos);
 
 	// Invalidate right away in case inverters are close-by
 	node_update_state(circ, node);
@@ -104,19 +180,11 @@ void node_delete(Circuit* circ, Node* node)
 	mem_zero(node, sizeof(Node));
 }
 
-Thing_Id node_id(Circuit* circ, Node* node)
-{
-	Thing_Id id;
-	id.index = node - circ->nodes;
-	id.generation = node->generation;
-	return id;
-}
-
 void node_connect(Circuit* circ, Node* a, Node* b)
 {
 	assert(a != b);
-	Thing_Id a_id = node_id(circ, a);
-	Thing_Id b_id = node_id(circ, b);
+	Thing_Id a_id = thing_id(circ, (Thing*)a);
+	Thing_Id b_id = thing_id(circ, (Thing*)b);
 
 	// First check if there already is a connection in some direction...
 	bool a_conn_b = false;
@@ -161,8 +229,8 @@ void node_connect(Circuit* circ, Node* a, Node* b)
 void node_disconnect(Circuit* circ, Node* a, Node* b)
 {
 	assert(a != b);
-	Thing_Id a_id = node_id(circ, a);
-	Thing_Id b_id = node_id(circ, b);
+	Thing_Id a_id = thing_id(circ, (Thing*)a);
+	Thing_Id b_id = thing_id(circ, (Thing*)b);
 
 	for(u32 i=0; i<4; ++i)
 	{
@@ -281,7 +349,7 @@ void node_toggle_public(Circuit* circ, Node* node)
 			if (node_get(circ, circ->public_nodes[i]))
 				continue;
 
-			circ->public_nodes[i] = node_id(circ, node);
+			circ->public_nodes[i] = thing_id(circ, (Thing*)node);
 			node->link_type = LINK_Public;
 			break;
 		}
@@ -296,11 +364,9 @@ Connection connection_find(Circuit* circ, Point pos)
 	Connection conn;
 	mem_zero(&conn, sizeof(conn));
 
-	for(u32 i=0; i<circ->node_num; ++i)
+	THINGS_FOREACH(circ, THING_Node)
 	{
-		Node* node = &circ->nodes[i];
-		if (!node->valid)
-			continue;
+		Node* node = (Node*)it;
 
 		for(u32 c=0; c<4; ++c)
 		{
@@ -336,7 +402,10 @@ Inverter* inverter_find(Circuit* circ, Point pos)
 
 Inverter* inverter_create(Circuit* circ, Point pos)
 {
+	assert(sizeof(Inverter) <= sizeof(Thing));
+
 	Inverter* inv = NULL;
+
 	for(u32 i=0; i<MAX_INVERTERS; ++i)
 	{
 		if (!circ->inverters[i].valid)
@@ -468,6 +537,7 @@ Chip* chip_get(Circuit* circ, Thing_Id id)
 
 Chip* chip_create(Circuit* circ, Point pos)
 {
+	assert(sizeof(Chip) <= sizeof(Thing));
 	Chip* chip = NULL;
 	for(u32 i=0; i<MAX_CHIPS; ++i)
 	{
@@ -526,9 +596,9 @@ void chip_update(Circuit* circ, Chip* chip)
 					chp_node = node_create(circ, chp_node_pos);
 
 				chp_node->link_type = LINK_Chip;
-				chp_node->link_chip = chip_id(circ, chip);
+				chp_node->link_chip = thing_id(circ, (Thing*)chip);
 				chp_node->link_index = i;
-				chip->link_nodes[i] = node_id(circ, chp_node);
+				chip->link_nodes[i] = thing_id(circ, (Thing*)chp_node);
 			}
 			// It was destroyed, so destroy the chip node as well
 			else
@@ -540,60 +610,6 @@ void chip_update(Circuit* circ, Chip* chip)
 		if (chp_node)
 			node_update_state(circ, chp_node);
 	}
-}
-
-/* THINGS */
-Thing thing_find(Circuit* circ, Point pos)
-{
-	Thing thing;
-	mem_zero(&thing, sizeof(thing));
-
-	Node* node = node_find(circ, pos);
-	if (node)
-	{
-		thing.type = THING_Node;
-		thing.ptr = node;
-		return thing;
-	}
-
-	Inverter* inv = inverter_find(circ, pos);
-	if (inv)
-	{
-		thing.type = THING_Inverter;
-		thing.ptr = inv;
-		return thing;
-	}
-
-	Chip* chip = chip_find(circ, pos);
-	if (chip)
-	{
-		thing.type = THING_Chip;
-		thing.ptr = chip;
-		return thing;
-	}
-
-	return thing;
-}
-
-u32 things_find(Circuit* circ, Rect rect, Thing* out_arr, u32 arr_size)
-{
-	u32 index = 0;
-
-	for(i32 y=rect.min.y; y<=rect.max.y; ++y)
-	{
-		for(i32 x=rect.min.x; x<=rect.max.x; ++x)
-		{
-			Thing thing = thing_find(circ, point(x, y));
-			if (thing.type != THING_Null)
-			{
-				out_arr[index++] = thing;
-				if (index == arr_size)
-					break;
-			}
-		}
-	}
-
-	return index;
 }
 
 /* CIRCUIT */
@@ -674,6 +690,7 @@ void circuit_tic(Circuit* circ)
 
 void circuit_merge(Circuit* circ, Circuit* other)
 {
+	/*
 	// Make sure they actually fit..
 	assert((circ->node_num) + (other->node_num) < MAX_NODES);
 	assert((circ->inv_num) + (other->inv_num) < MAX_INVERTERS);
@@ -701,6 +718,7 @@ void circuit_merge(Circuit* circ, Circuit* other)
 	circ->node_num += other->node_num;
 	circ->inv_num += other->inv_num;
 	circ->chip_num += other->chip_num;
+	*/
 }
 
 void circuit_copy(Circuit* circ, Circuit* other)
@@ -710,6 +728,7 @@ void circuit_copy(Circuit* circ, Circuit* other)
 
 void circuit_shift(Circuit* circ, Point amount)
 {
+	/*
 	// Shift all nodes
 	for(u32 i=0; i<circ->node_num; ++i)
 		circ->nodes[i].pos = point_add(circ->nodes[i].pos, amount);
@@ -717,6 +736,7 @@ void circuit_shift(Circuit* circ, Point amount)
 	// Shift all inverters
 	for(u32 i=0; i<circ->inv_num; ++i)
 		circ->inverters[i].pos = point_add(circ->inverters[i].pos, amount);
+		*/
 }
 
 #define fwrite_t(expr, file) (fwrite(&expr, sizeof(expr), 1, file))
@@ -724,6 +744,7 @@ void circuit_shift(Circuit* circ, Point amount)
 
 void circuit_fwrite(Circuit* circ, FILE* file)
 {
+	/*
 	fwrite_t(circ->name, file);
 	fwrite_t(circ->gen_num, file);
 	fwrite_t(circ->dirty_inverters, file);
@@ -749,10 +770,12 @@ void circuit_fwrite(Circuit* circ, FILE* file)
 
 	// Write public nodes
 	fwrite_t(circ->public_nodes, file);
+	*/
 }
 
 void circuit_fread(Circuit* circ, FILE* file)
 {
+	/*
 	mem_zero(circ, sizeof(Circuit));
 
 	fread_t(circ->name, file);
@@ -783,6 +806,7 @@ void circuit_fread(Circuit* circ, FILE* file)
 
 	// Read public nodes
 	fread_t(circ->public_nodes, file);
+	*/
 }
 
 void circuit_save(Circuit* circ, const char* path)

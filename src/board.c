@@ -105,38 +105,61 @@ void draw_connection(Rect rect, bool state)
 void draw_circuit(Circuit* circ)
 {
 	// Draw nodes
-	for(u32 i=0; i < circ->node_num; i++)
+	THINGS_FOREACH(circ, THING_All)
 	{
+		switch(it->type)
+		{
+			// DRAW NODE
+			case THING_Node:
+			{
+				Node* node = (Node*)it;
+				cell_draw_off(node->pos, GLPH_NODE, CLR_RED_1, -1);
+				if (connect_node == node)
+				{
+					cell_draw_off(node->pos, -1, CLR_RED_1, CLR_RED_0);
+				}
+				else
+				{
+					if (node->state)
+						cell_draw_off(node->pos, -1, CLR_RED_0, -1);
+					if (node->link_type == LINK_Public)
+						cell_draw_off(node->pos, -1, -1, CLR_ORNG_1);
+					if (node->link_type == LINK_Chip)
+						cell_draw_off(node->pos, -1, -1, CLR_BLUE_0);
+				}
+
+				for(u32 i=0; i<4; ++i)
+				{
+					Node* other = node_get(circ, node->connections[i]);
+					if (!other)
+						continue;
+
+					u8 direction = get_direction(node->pos, other->pos);
+					cell_or_off(node->pos, direction);
+
+					draw_connection(rect(node->pos, other->pos), node->state);
+				}
+				break;
+			}
+
+			// DRAW INVERTER
+			case THING_Inverter:
+			{
+				break;
+			}
+
+			// DRAW CHIP
+			case THING_Chip:
+			{
+				break;
+			}
+		}
+	}
+		/*
 		Node* node = &circ->nodes[i];
 		if (!node->valid)
 			continue;
 
-		cell_draw_off(node->pos, GLPH_NODE, CLR_RED_1, -1);
-		if (connect_node == node)
-		{
-			cell_draw_off(node->pos, -1, CLR_RED_1, CLR_RED_0);
-		}
-		else
-		{
-			if (node->state)
-				cell_draw_off(node->pos, -1, CLR_RED_0, -1);
-			if (node->link_type == LINK_Public)
-				cell_draw_off(node->pos, -1, -1, CLR_ORNG_1);
-			if (node->link_type == LINK_Chip)
-				cell_draw_off(node->pos, -1, -1, CLR_BLUE_0);
-		}
-
-		for(u32 i=0; i<4; ++i)
-		{
-			Node* other = node_get(circ, node->connections[i]);
-			if (!other)
-				continue;
-
-			u8 direction = get_direction(node->pos, other->pos);
-			cell_or_off(node->pos, direction);
-
-			draw_connection(rect(node->pos, other->pos), node->state);
-		}
 	}
 
 	// Draw inverters
@@ -168,6 +191,7 @@ void draw_circuit(Circuit* circ)
 			}
 		}
 	}
+		*/
 }
 
 void board_draw()
@@ -233,6 +257,7 @@ void board_draw()
 
 void delete_things(Circuit* circ, Thing* thing_arr, u32 count)
 {
+	/*
 	for(u32 i=0; i<count; ++i)
 	{
 		switch(thing_arr[i].type)
@@ -258,10 +283,12 @@ void delete_things(Circuit* circ, Thing* thing_arr, u32 count)
 			}
 		}
 	}
+	*/
 }
 
 void board_delete()
 {
+	/*
 	Circuit* circ = board_get_edit_circuit();
 	if (board.visual)
 	{
@@ -276,6 +303,7 @@ void board_delete()
 		Thing thing = thing_find(circ, board.cursor);
 		delete_things(circ, &thing, 1);
 	}
+	*/
 }
 
 void board_place_node()
@@ -359,7 +387,7 @@ void board_place_inverter()
 	}
 
 	// We're blocked...
-	if (thing_find(circ, pos).type != THING_Null)
+	if (thing_find(circ, pos, THING_All))
 		return;
 
 	inverter_create(circ, pos);
@@ -431,6 +459,7 @@ void board_load()
 
 void board_yank()
 {
+	/*
 	if (board.visual)
 	{
 		Rect v_rect = rect(board.vis_origin, board.cursor);
@@ -456,6 +485,7 @@ void board_yank()
 		circuit_shift(clipboard, point_inv(v_rect.min));
 		board.visual = false;
 	}
+	*/
 }
 
 void board_put()
