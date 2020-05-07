@@ -636,6 +636,10 @@ void circuit_tic(Circuit* circ)
 	// Update all chip input/outputs
 	for(u32 i=0; i<circ->chip_num; ++i)
 	{
+		Chip* chip = &circ->chips[i];
+		if (chip->valid)
+			break;
+
 		chip_update(circ, &circ->chips[i]);
 	}
 

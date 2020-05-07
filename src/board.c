@@ -250,6 +250,12 @@ void delete_things(Circuit* circ, Thing* thing_arr, u32 count)
 				inverter_delete(circ, thing_arr[i].ptr);
 				break;
 			}
+
+			case THING_Chip:
+			{
+				chip_delete(circ, thing_arr[i].ptr);
+				break;
+			}
 		}
 	}
 }
@@ -437,6 +443,13 @@ void board_yank()
 				Node* node = &clipboard->nodes[i];
 				if (!point_in_rect(node->pos, v_rect))
 					node_delete(clipboard, node);
+			}
+
+			for(u32 i=0; i<clipboard->inv_num; ++i)
+			{
+				Inverter* inv= &clipboard->inverters[i];
+				if (!point_in_rect(inv->pos, v_rect))
+					inverter_delete(clipboard, inv);
 			}
 		}
 
