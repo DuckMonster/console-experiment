@@ -1,4 +1,6 @@
 #pragma once
+#include <stdio.h>
+
 #define MAX_THINGS 256
 #define MAX_NODES 256
 #define MAX_INVERTERS 256
@@ -51,6 +53,7 @@ typedef struct
 } Thing;
 
 Thing* thing_create(Circuit* circ, u8 type, Point pos);
+void thing_delete(Circuit* circ, Thing* thing);
 Thing* thing_find(Circuit* circ, Point pos, u8 type_mask);
 Thing* thing_get(Circuit* circ, Thing_Id id);
 Thing_Id thing_id(Circuit* circ, Thing* thing);
@@ -58,6 +61,18 @@ u32 things_find(Circuit* circ, Rect rect, Thing** out_arr, u32 arr_size);
 bool _thing_it_inc(Circuit* circ, Thing** thing, u8 type_mask);
 
 #define THINGS_FOREACH(circ, type_mask) for(Thing* it = circ->things; _thing_it_inc(circ, &it, (type_mask)); it++)
+
+// Thing data
+typedef void (*Thing_Delete_Proc)(Circuit* circ, void* thing);
+typedef void (*Thing_Save_Proc)(Circuit* circ, void* thing, FILE* file);
+typedef void (*Thing_Load_Proc)(Circuit* circ, void* thing, FILE* file);
+
+typedef struct
+{
+	Thing_Delete_Proc delete_proc;
+	Thing_Save_Proc save_proc;
+	Thing_Load_Proc load_proc;
+} Thing_Type_Data;
 
 /* NODES */
 enum Node_Link_Type
@@ -91,7 +106,7 @@ typedef struct
 Node* node_find(Circuit* circ, Point pos);
 Node* node_get(Circuit* circ, Thing_Id id);
 Node* node_create(Circuit* circ, Point pos);
-void node_delete(Circuit* circ, Node* node);
+void node_on_deleted(Circuit* circ, void* ptr);
 
 void node_update_state(Circuit* circ, Node* node);
 void node_toggle_public(Circuit* circ, Node* node);
@@ -111,20 +126,17 @@ Connection connection_find(Circuit* circ, Point pos);
 /* INVERTERS */
 typedef struct
 {
-	u16 generation;
+	THING_IMPL();
 
-	bool valid;
 	bool active;
 	bool dirty;
-
-	Point pos;
 
 	u32 tic;
 } Inverter;
 
 Inverter* inverter_find(Circuit* circ, Point pos);
 Inverter* inverter_create(Circuit* circ, Point pos);
-void inverter_delete(Circuit* circ, Inverter* inv);
+void inverter_on_deleted(Circuit* circ, void* ptr);
 void inverter_make_dirty(Circuit* circ, Inverter* inv);
 void inverter_invalidate(Circuit* circ, Inverter* inv);
 bool inverter_clean_up(Circuit* circ, Inverter* inv);
@@ -144,6 +156,7 @@ typedef struct
 Chip* chip_find(Circuit* circ, Point pos);
 Chip* chip_get(Circuit* circ, Thing_Id id);
 Chip* chip_create(Circuit* circ, Point pos);
+void chip_on_deleted(Circuit* circ, void* ptr);
 Thing_Id chip_id(Circuit* circ, Chip* chip);
 void chip_delete(Circuit* circ, Chip* chip);
 
@@ -160,9 +173,6 @@ typedef struct Circuit
 
 	Thing things[MAX_THINGS];
 	u32 thing_num;
-
-	Inverter inverters[MAX_INVERTERS];
-	u32 inv_num;
 
 	Chip chips[MAX_CHIPS];
 	u32 chip_num;

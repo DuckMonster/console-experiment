@@ -145,6 +145,13 @@ void draw_circuit(Circuit* circ)
 			// DRAW INVERTER
 			case THING_Inverter:
 			{
+				Inverter* inv = (Inverter*)it;
+
+				i32 color = CLR_RED_1;
+				if (inv->active)
+					color = CLR_RED_0;
+
+				cell_draw_off(inv->pos, '>', color, -1);
 				break;
 			}
 
@@ -165,15 +172,6 @@ void draw_circuit(Circuit* circ)
 	// Draw inverters
 	for(u32 i=0; i < circ->inv_num; ++i)
 	{
-		Inverter* inv = &circ->inverters[i];
-		if (!inv->valid)
-			continue;
-
-		i32 color = CLR_RED_1;
-		if (inv->active)
-			color = CLR_RED_0;
-
-		cell_draw_off(inv->pos, '>', color, -1);
 	}
 
 	// Draw chips
@@ -255,44 +253,23 @@ void board_draw()
 	draw_edit_stack();
 }
 
-void delete_things(Circuit* circ, Thing* thing_arr, u32 count)
+void delete_things(Circuit* circ, Thing** thing_arr, u32 count)
 {
-	/*
 	for(u32 i=0; i<count; ++i)
 	{
-		switch(thing_arr[i].type)
-		{
-			case THING_Node:
-			{
-				node_delete(circ, thing_arr[i].ptr);
-				if (connect_node == thing_arr[i].ptr)
-					connect_node = NULL;
-				break;
-			}
+		if (thing_arr[i] == (Thing*)connect_node)
+			connect_node = NULL;
 
-			case THING_Inverter:
-			{
-				inverter_delete(circ, thing_arr[i].ptr);
-				break;
-			}
-
-			case THING_Chip:
-			{
-				chip_delete(circ, thing_arr[i].ptr);
-				break;
-			}
-		}
+		thing_delete(circ, thing_arr[i]);
 	}
-	*/
 }
 
 void board_delete()
 {
-	/*
 	Circuit* circ = board_get_edit_circuit();
 	if (board.visual)
 	{
-		static Thing thing_buf[64];
+		static Thing* thing_buf[64];
 		u32 num_things = things_find(circ, rect(board.vis_origin, board.cursor), thing_buf, 64);
 
 		delete_things(circ, thing_buf, num_things);
@@ -300,10 +277,10 @@ void board_delete()
 	}
 	else
 	{
-		Thing thing = thing_find(circ, board.cursor);
-		delete_things(circ, &thing, 1);
+		Thing* thing = thing_find(circ, board.cursor, THING_All);
+		if (thing)
+			delete_things(circ, &thing, 1);
 	}
-	*/
 }
 
 void board_place_node()

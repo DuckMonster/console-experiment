@@ -2,6 +2,20 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+Thing_Type_Data type_data[] =
+{
+	// Thing types are bit-masks as well, so the type data need to be spaced accordingly...
+	{NULL, NULL, NULL},
+	{node_on_deleted, NULL, NULL},			// 1 << 0
+	{inverter_on_deleted, NULL, NULL},		// 1 << 1
+	{NULL, NULL, NULL},
+	{chip_on_deleted, NULL, NULL},			// 1 << 2
+	{NULL, NULL, NULL},
+	{NULL, NULL, NULL},
+	{NULL, NULL, NULL},
+	{NULL, NULL, NULL},						// 1 << 3
+};
+
 u32 tic_num = 0;
 
 bool id_null(Thing_Id id)
@@ -56,6 +70,14 @@ Thing* thing_create(Circuit* circ, u8 type, Point pos)
 	return thing;
 }
 
+void thing_delete(Circuit* circ, Thing* thing)
+{
+	if (type_data[thing->type].delete_proc)
+		type_data[thing->type].delete_proc(circ, thing);
+
+	mem_zero(thing, sizeof(Thing));
+}
+
 Thing* thing_find(Circuit* circ, Point pos, u8 type_mask)
 {
 	THINGS_FOREACH(circ, type_mask)
@@ -107,10 +129,10 @@ bool _thing_it_inc(Circuit* circ, Thing** thing, u8 type_mask)
 	u32 index = *thing - circ->things;
 	while(index < circ->thing_num)
 	{
-		if (circ->things[index].valid)
+		if ((*thing)->valid && ((*thing)->type & type_mask))
 			return true;
 
-		*thing++;
+		(*thing)++;
 		index++;
 	}
 
@@ -119,26 +141,14 @@ bool _thing_it_inc(Circuit* circ, Thing** thing, u8 type_mask)
 
 u32 things_find(Circuit* circ, Rect rect, Thing** out_arr, u32 arr_size)
 {
-	/*
 	u32 index = 0;
-
-	for(i32 y=rect.min.y; y<=rect.max.y; ++y)
+	THINGS_FOREACH(circ, THING_All)
 	{
-		for(i32 x=rect.min.x; x<=rect.max.x; ++x)
-		{
-			Thing thing = thing_find(circ, point(x, y));
-			if (thing.type != THING_Null)
-			{
-				out_arr[index++] = thing;
-				if (index == arr_size)
-					break;
-			}
-		}
+		if (point_in_rect(it->pos, rect))
+			out_arr[index++] = it;
 	}
 
 	return index;
-	*/
-	return 0;
 }
 
 
@@ -164,9 +174,9 @@ Node* node_create(Circuit* circ, Point pos)
 	return node;
 }
 
-void node_delete(Circuit* circ, Node* node)
+void node_on_deleted(Circuit* circ, void* ptr)
 {
-	// Pre-invalidate for the coming updates...
+	Node* node = ptr;
 	node->valid = false;
 
 	// Deleting node will dirty its connections!
@@ -176,8 +186,6 @@ void node_delete(Circuit* circ, Node* node)
 		if (other)
 			node_update_state(circ, other);
 	}
-
-	mem_zero(node, sizeof(Node));
 }
 
 void node_connect(Circuit* circ, Node* a, Node* b)
@@ -390,44 +398,14 @@ Connection connection_find(Circuit* circ, Point pos)
 /* INVERTERS */
 Inverter* inverter_find(Circuit* circ, Point pos)
 {
-	for(u32 i=0; i<circ->inv_num; ++i)
-	{
-		Inverter* inv = &circ->inverters[i];
-		if (inv->valid && point_eq(inv->pos, pos))
-			return inv;
-	}
-
-	return NULL;
+	return (Inverter*)thing_find(circ, pos, THING_Inverter);
 }
 
 Inverter* inverter_create(Circuit* circ, Point pos)
 {
 	assert(sizeof(Inverter) <= sizeof(Thing));
 
-	Inverter* inv = NULL;
-
-	for(u32 i=0; i<MAX_INVERTERS; ++i)
-	{
-		if (!circ->inverters[i].valid)
-		{
-			inv = &circ->inverters[i];
-			break;
-		}
-	}
-
-	if (inv == NULL)
-	{
-		msg_box("Ran out of inverters");
-		return NULL;
-	}
-
-	inv->generation = ++circ->gen_num;
-	inv->valid = true;
-	inv->pos = pos;
-
-	u32 index = inv - circ->inverters;
-	if (index >= circ->inv_num)
-		circ->inv_num = index + 1;
+	Inverter* inv = (Inverter*)thing_create(circ, THING_Inverter, pos);
 
 	// Inverters start out dirty!
 	inverter_make_dirty(circ, inv);
@@ -435,26 +413,15 @@ Inverter* inverter_create(Circuit* circ, Point pos)
 	return inv;
 }
 
-void inverter_delete(Circuit* circ, Inverter* inv)
+void inverter_on_deleted(Circuit* circ, void* ptr)
 {
-	// Pre-invalidate for consequence calculations..
+	Inverter* inv = ptr;
 	inv->valid = false;
 
-	// Invalidate affected if we're powering it
-	if (inv->active)
-	{
-		Node* tar_node = node_find(circ, point_add(inv->pos, point(1, 0)));
-		if (tar_node)
-			node_update_state(circ, tar_node);
-	}
-
-	// Manually dec dirty counter if removing a dirty inverter
-	if (inv->dirty)
-	{
-		circ->dirty_inverters--;
-	}
-
-	mem_zero(inv, sizeof(Inverter));
+	// If there is a target-node to this inverter, update it
+	Node* node = node_find(circ, point_add(inv->pos, point(1, 0)));
+	if (node)
+		node_update_state(circ, node);
 }
 
 void inverter_make_dirty(Circuit* circ, Inverter* inv)
@@ -493,7 +460,7 @@ bool inverter_clean_up(Circuit* circ, Inverter* inv)
 	}
 
 	// Did our state change?
-	if (inv->active != prev_active)
+	if (inv->active != prev_active || true)
 	{
 		// In that case, update nodes
 		Node* tar_node = node_find(circ, point_add(inv->pos, point(1, 0)));
@@ -562,6 +529,11 @@ Chip* chip_create(Circuit* circ, Point pos)
 	return chip;
 }
 
+void chip_on_deleted(Circuit* circ, void* ptr)
+{
+
+}
+
 Thing_Id chip_id(Circuit* circ, Chip* chip)
 {
 	Thing_Id id;
@@ -603,7 +575,7 @@ void chip_update(Circuit* circ, Chip* chip)
 			// It was destroyed, so destroy the chip node as well
 			else
 			{
-				node_delete(circ, chp_node);
+				thing_delete(circ, (Thing*)chp_node);
 			}
 		}
 
@@ -630,11 +602,9 @@ void circuit_free(Circuit* circ)
 bool circuit_run_tic(Circuit* circ)
 {
 	bool was_cleaned = false;
-	for(u32 i=0; i<circ->inv_num; ++i)
+	THINGS_FOREACH(circ, THING_Inverter)
 	{
-		Inverter* inv = &circ->inverters[i];
-		if (!inv->valid)
-			continue;
+		Inverter* inv = (Inverter*)it;
 
 		bool clean = inverter_clean_up(circ, inv);
 		was_cleaned |= clean;
@@ -690,24 +660,24 @@ void circuit_tic(Circuit* circ)
 
 void circuit_merge(Circuit* circ, Circuit* other)
 {
-	/*
 	// Make sure they actually fit..
-	assert((circ->node_num) + (other->node_num) < MAX_NODES);
-	assert((circ->inv_num) + (other->inv_num) < MAX_INVERTERS);
-	assert((circ->chip_num) + (other->chip_num) < MAX_INVERTERS);
+	assert((circ->thing_num) + (other->thing_num) < MAX_THINGS);
 
-	// We will put all of the nodes after the last node of the target
-	// (+1 since node_last is the index of the last node, not the count)
-	memcpy(circ->nodes + circ->node_num, other->nodes, sizeof(Node) * (other->node_num));
-	memcpy(circ->inverters + circ->inv_num, other->inverters, sizeof(Inverter) * (other->inv_num));
-	memcpy(circ->chips + circ->chip_num, other->chips, sizeof(Chip) * (other->chip_num));
+	// Copy over all the things, at the end of the target list
+	memcpy(circ->things + circ->thing_num, other->things, sizeof(Thing) * (other->thing_num));
 
 	// After that we have to update all of the connection ID's, since the indecies have been shifted
-	for(u32 i=circ->node_num; i<circ->node_num + other->node_num; ++i)
+	for(u32 i=circ->thing_num; i<circ->thing_num + other->thing_num; ++i)
 	{
-		// We can do this for all connections, since NULL connections have 0 generation anyways
-		for(u32 c=0; c<4; ++c)
-			circ->nodes[i].connections[c].index += circ->node_num;
+		if (circ->things[i].type == THING_Node)
+		{
+			Node* node = (Node*)&circ->things[i];
+			for(u32 c=0; c<4; ++c)
+			{
+				// We can do this for all connections, since NULL connections have 0 generation anyways
+				node->connections[c].index += circ->thing_num;
+			}
+		}
 	}
 
 	// Merge public nodes
@@ -715,10 +685,7 @@ void circuit_merge(Circuit* circ, Circuit* other)
 
 	// Avoid repeat generation
 	circ->gen_num = max(circ->gen_num, other->gen_num);
-	circ->node_num += other->node_num;
-	circ->inv_num += other->inv_num;
-	circ->chip_num += other->chip_num;
-	*/
+	circ->thing_num += other->thing_num;
 }
 
 void circuit_copy(Circuit* circ, Circuit* other)
@@ -728,85 +695,49 @@ void circuit_copy(Circuit* circ, Circuit* other)
 
 void circuit_shift(Circuit* circ, Point amount)
 {
-	/*
-	// Shift all nodes
-	for(u32 i=0; i<circ->node_num; ++i)
-		circ->nodes[i].pos = point_add(circ->nodes[i].pos, amount);
-
-	// Shift all inverters
-	for(u32 i=0; i<circ->inv_num; ++i)
-		circ->inverters[i].pos = point_add(circ->inverters[i].pos, amount);
-		*/
+	THINGS_FOREACH(circ, THING_All)
+	{
+		it->pos = point_add(it->pos, amount);
+	}
 }
 
-#define fwrite_t(expr, file) (fwrite(&expr, sizeof(expr), 1, file))
-#define fread_t(expr, file) (fread(&expr, sizeof(expr), 1, file))
+#define fwrite_t(expr, file) (fwrite(&(expr), sizeof(expr), 1, file))
+#define fread_t(expr, file) (fread(&(expr), sizeof(expr), 1, file))
 
 void circuit_fwrite(Circuit* circ, FILE* file)
 {
-	/*
 	fwrite_t(circ->name, file);
 	fwrite_t(circ->gen_num, file);
 	fwrite_t(circ->dirty_inverters, file);
 
-	// Write nodes
-	fwrite_t(circ->node_num, file);
-	fwrite(circ->nodes, sizeof(Node), circ->node_num, file);
-
-	// Write inverters
-	fwrite_t(circ->inv_num, file);
-	fwrite(circ->inverters, sizeof(Inverter), circ->inv_num, file);
-
-	// Write chips
-	fwrite_t(circ->chip_num, file);
-	for(u32 i=0; i<circ->chip_num; ++i)
+	// Write things
+	fwrite_t(circ->thing_num, file);
+	for(u32 i=0; i<circ->thing_num; ++i)
 	{
-		Chip* chip = &circ->chips[i];
-		fwrite(chip, sizeof(Chip), 1, file);
-
-		if (chip->valid)
-			circuit_fwrite(chip->circuit, file);
+		fwrite_t(circ->things[i], file);
 	}
 
 	// Write public nodes
 	fwrite_t(circ->public_nodes, file);
-	*/
 }
 
 void circuit_fread(Circuit* circ, FILE* file)
 {
-	/*
 	mem_zero(circ, sizeof(Circuit));
 
 	fread_t(circ->name, file);
 	fread_t(circ->gen_num, file);
 	fread_t(circ->dirty_inverters, file);
 
-	// Read nodes
-	fread_t(circ->node_num, file);
-	fread(circ->nodes, sizeof(Node), circ->node_num, file);
-
-	// Read inverters
-	fread_t(circ->inv_num, file);
-	fread(circ->inverters, sizeof(Inverter), circ->inv_num, file);
-
-	// Read chips
-	fread_t(circ->chip_num, file);
-	for(u32 i=0; i<circ->chip_num; ++i)
+	// Read things
+	fread_t(circ->thing_num, file);
+	for(u32 i=0; i<circ->thing_num; ++i)
 	{
-		Chip* chip = &circ->chips[i];
-		fread(chip, sizeof(Chip), 1, file);
-
-		if (chip->valid)
-		{	
-			chip->circuit = circuit_make("");
-			circuit_fread(chip->circuit, file);
-		}
+		fread_t(circ->things[i], file);
 	}
 
 	// Read public nodes
 	fread_t(circ->public_nodes, file);
-	*/
 }
 
 void circuit_save(Circuit* circ, const char* path)
