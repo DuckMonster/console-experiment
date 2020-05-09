@@ -27,6 +27,12 @@
 #define KEY_PROMPT 0x20
 #define EDIT_STACK_SIZE 8
 
+enum Tic_Mode
+{
+	TIC_Auto,
+	TIC_Single,
+};
+
 /* BOARD */
 typedef struct
 {
@@ -38,6 +44,8 @@ typedef struct
 
 	Circuit* edit_stack[EDIT_STACK_SIZE];
 	i32 edit_index;
+
+	u8 tic_mode;
 } Board;
 extern Board board;
 

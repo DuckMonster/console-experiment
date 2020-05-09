@@ -19,7 +19,8 @@ void board_init()
 void board_tic()
 {
 	// Tick the top entry on the stack first, let it trickle down through chips
-	circuit_tic(board.edit_stack[0]);
+	if (board.tic_mode == TIC_Auto)
+		circuit_tic(board.edit_stack[0]);
 }
 
 void cell_draw_off(Point pnt, i32 glyph, i32 fg_color, i32 bg_color)
@@ -158,38 +159,18 @@ void draw_circuit(Circuit* circ)
 			// DRAW CHIP
 			case THING_Chip:
 			{
+				Chip* chip = (Chip*)it;
+				Point pos = chip->pos;
+				Point size = chip->size;
+
+				for(i32 y=pos.y; y<=pos.y + size.y; ++y)
+					for(i32 x=pos.x; x<=pos.x + size.x; ++x)
+						cell_draw_off(point(x, y), ' ', CLR_WHITE, CLR_BLACK);
+
 				break;
 			}
 		}
 	}
-		/*
-		Node* node = &circ->nodes[i];
-		if (!node->valid)
-			continue;
-
-	}
-
-	// Draw inverters
-	for(u32 i=0; i < circ->inv_num; ++i)
-	{
-	}
-
-	// Draw chips
-	for(u32 i=0; i<circ->chip_num; ++i)
-	{
-		Chip* chip = &circ->chips[i];
-		if (!chip->valid)
-			continue;
-
-		for(i32 y=chip->pos.y; y<=chip->pos.y + 5; ++y)
-		{
-			for(i32 x=chip->pos.x; x<=chip->pos.x + 5; ++x)
-			{
-				cell_draw_off(point(x, y), ' ', CLR_WHITE, CLR_BLACK);
-			}
-		}
-	}
-		*/
 }
 
 void board_draw()
@@ -512,7 +493,7 @@ bool board_key_event(u32 code, char chr, u32 mods)
 			case KEY_YANK: board_yank(); break;
 			case KEY_PUT: board_put(); break;
 
-			case KEY_TIC: board_tic(); break;
+			case KEY_TIC: circuit_tic(board.edit_stack[0]); break;
 
 			default: return false;
 		}
@@ -530,6 +511,8 @@ bool board_key_event(u32 code, char chr, u32 mods)
 			case KEY_LOAD: board_load(); break;
 
 			case KEY_DELETE: prompt_msg("Error", "This is an error"); break;
+
+			case KEY_TIC: board.tic_mode = !board.tic_mode; break;
 		}
 	}
 

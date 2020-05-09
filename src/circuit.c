@@ -6,14 +6,18 @@ Thing_Type_Data type_data[] =
 {
 	// Thing types are bit-masks as well, so the type data need to be spaced accordingly...
 	{NULL, NULL, NULL},
-	{node_on_deleted, NULL, NULL},			// 1 << 0
-	{inverter_on_deleted, NULL, NULL},		// 1 << 1
+	// 1
+	{node_on_deleted, NULL, NULL},
+	// 2
+	{inverter_on_deleted, NULL, NULL},
 	{NULL, NULL, NULL},
-	{chip_on_deleted, NULL, NULL},			// 1 << 2
+	// 4
+	{chip_on_deleted, chip_on_save, chip_on_load},
 	{NULL, NULL, NULL},
 	{NULL, NULL, NULL},
 	{NULL, NULL, NULL},
-	{NULL, NULL, NULL},						// 1 << 3
+	// 8
+	{NULL, NULL, NULL},
 };
 
 u32 tic_num = 0;
@@ -82,7 +86,9 @@ Thing* thing_find(Circuit* circ, Point pos, u8 type_mask)
 {
 	THINGS_FOREACH(circ, type_mask)
 	{
-		if (point_eq(it->pos, pos))
+		// -1 on the rect, size 1 size means x.min == x.max
+		Rect thing_rect = rect(it->pos, point_add(it->pos, point_sub(it->size, point(1, 1))));
+		if (point_in_rect(pos, thing_rect))
 			return it;
 	}
 
@@ -475,56 +481,23 @@ bool inverter_clean_up(Circuit* circ, Inverter* inv)
 
 Chip* chip_find(Circuit* circ, Point pos)
 {
-	for(u32 i=0; i < circ->chip_num; i++)
-	{
-		if (circ->chips[i].valid && point_eq(circ->chips[i].pos, pos))
-			return &circ->chips[i];
-	}
-
-	return NULL;
+	return (Chip*)thing_find(circ, pos, THING_Chip);
 }
 
 Chip* chip_get(Circuit* circ, Thing_Id id)
 {
-	if (id_null(id))
-		return NULL;
-
-	if (id.index >= MAX_CHIPS)
-		return NULL;
-
-	Chip* chip = &circ->chips[id.index];
-	if (chip->generation != id.generation)
-		return NULL;
-
-	if (!chip->valid)
-		return NULL;
-
-	return chip;
+	return (Chip*)thing_get(circ, id);
 }
 
 Chip* chip_create(Circuit* circ, Point pos)
 {
 	assert(sizeof(Chip) <= sizeof(Thing));
-	Chip* chip = NULL;
-	for(u32 i=0; i<MAX_CHIPS; ++i)
-	{
-		if (!circ->chips[i].valid)
-		{
-			chip = &circ->chips[i];
-			break;
-		}
-	}
+	Chip* chip = (Chip*)thing_create(circ, THING_Chip, pos);
 
-	assert(chip);
-	chip->generation = ++circ->gen_num;
-	chip->valid = true;
-	chip->pos = pos;
-
+	chip->size = point(3, 5);
 	chip->circuit = circuit_make("CHIP");
-
-	u32 index = chip - circ->chips;
-	if (index >= circ->chip_num)
-		circ->chip_num = index + 1;
+	chip->link_nodes = malloc(sizeof(Thing_Id) * MAX_PUBLIC_NODES);
+	mem_zero(chip->link_nodes, sizeof(Thing_Id) * MAX_PUBLIC_NODES);
 
 	return chip;
 }
@@ -534,17 +507,24 @@ void chip_on_deleted(Circuit* circ, void* ptr)
 
 }
 
-Thing_Id chip_id(Circuit* circ, Chip* chip)
+
+void circuit_fwrite(Circuit* circ, FILE* file);
+void circuit_fread(Circuit* circ, FILE* file);
+void chip_on_save(Circuit* circ, void* ptr, FILE* file)
 {
-	Thing_Id id;
-	id.index = chip - circ->chips;
-	id.generation = chip->generation;
-	return id;
+	Chip* chip = ptr;
+	circuit_fwrite(chip->circuit, file);
+	fwrite(chip->link_nodes, sizeof(Thing_Id), MAX_PUBLIC_NODES, file);
 }
 
-void chip_delete(Circuit* circ, Chip* chip)
+void chip_on_load(Circuit* circ, void* ptr, FILE* file)
 {
-	mem_zero(chip, sizeof(Chip));
+	Chip* chip = ptr;
+	chip->circuit = circuit_make("CHIP");
+	circuit_fread(chip->circuit, file);
+
+	chip->link_nodes = malloc(sizeof(Thing_Id) * MAX_PUBLIC_NODES);
+	fread(chip->link_nodes, sizeof(Thing_Id), MAX_PUBLIC_NODES, file);
 }
 
 void chip_update(Circuit* circ, Chip* chip)
@@ -620,13 +600,9 @@ void circuit_tic(Circuit* circ)
 	u32 num_cleaned_inverters = 0;
 
 	// Update all chip input/outputs
-	for(u32 i=0; i<circ->chip_num; ++i)
+	THINGS_FOREACH(circ, THING_Chip)
 	{
-		Chip* chip = &circ->chips[i];
-		if (chip->valid)
-			break;
-
-		chip_update(circ, &circ->chips[i]);
+		chip_update(circ, (Chip*)it);
 	}
 
 	// Update all inverters while there are dirty ones
@@ -643,12 +619,9 @@ void circuit_tic(Circuit* circ)
 			break;
 	}
 
-	for(u32 i=0; i<circ->chip_num; ++i)
+	THINGS_FOREACH(circ, THING_Chip)
 	{
-		Chip* chip = &circ->chips[i];
-		if (!chip->valid)
-			continue;
-
+		Chip* chip = (Chip*)it;
 		circuit_tic(chip->circuit);
 	}
 
@@ -714,7 +687,11 @@ void circuit_fwrite(Circuit* circ, FILE* file)
 	fwrite_t(circ->thing_num, file);
 	for(u32 i=0; i<circ->thing_num; ++i)
 	{
-		fwrite_t(circ->things[i], file);
+		Thing* thing = &circ->things[i];
+
+		fwrite(thing, sizeof(Thing), 1, file);
+		if (type_data[thing->type].save_proc)
+			type_data[thing->type].save_proc(circ, thing, file);
 	}
 
 	// Write public nodes
@@ -733,7 +710,11 @@ void circuit_fread(Circuit* circ, FILE* file)
 	fread_t(circ->thing_num, file);
 	for(u32 i=0; i<circ->thing_num; ++i)
 	{
-		fread_t(circ->things[i], file);
+		Thing* thing = &circ->things[i];
+
+		fread(thing, sizeof(Thing), 1, file);
+		if (type_data[thing->type].load_proc)
+			type_data[thing->type].load_proc(circ, thing, file);
 	}
 
 	// Read public nodes

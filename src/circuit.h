@@ -49,7 +49,7 @@ typedef struct
 	THING_IMPL();
 
 	// Padding data used by the different types of things
-	u8 data[40];
+	u8 data[64];
 } Thing;
 
 Thing* thing_create(Circuit* circ, u8 type, Point pos);
@@ -144,19 +144,18 @@ bool inverter_clean_up(Circuit* circ, Inverter* inv);
 /* CHIP */
 typedef struct 
 {
-	u16 generation;
-
-	bool valid;
-	Point pos;
+	THING_IMPL();
 
 	Circuit* circuit;
-	Thing_Id link_nodes[MAX_PUBLIC_NODES];
+	Thing_Id* link_nodes;
 } Chip;
 
 Chip* chip_find(Circuit* circ, Point pos);
 Chip* chip_get(Circuit* circ, Thing_Id id);
 Chip* chip_create(Circuit* circ, Point pos);
 void chip_on_deleted(Circuit* circ, void* ptr);
+void chip_on_save(Circuit* circ, void* ptr, FILE* file);
+void chip_on_load(Circuit* circ, void* ptr, FILE* file);
 Thing_Id chip_id(Circuit* circ, Chip* chip);
 void chip_delete(Circuit* circ, Chip* chip);
 
@@ -173,9 +172,6 @@ typedef struct Circuit
 
 	Thing things[MAX_THINGS];
 	u32 thing_num;
-
-	Chip chips[MAX_CHIPS];
-	u32 chip_num;
 
 	Thing_Id public_nodes[MAX_PUBLIC_NODES];
 } Circuit;
