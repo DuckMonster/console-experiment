@@ -163,8 +163,8 @@ void draw_circuit(Circuit* circ)
 				Point pos = chip->pos;
 				Point size = chip->size;
 
-				for(i32 y=pos.y; y<=pos.y + size.y; ++y)
-					for(i32 x=pos.x; x<=pos.x + size.x; ++x)
+				for(i32 y=pos.y; y<pos.y + size.y; ++y)
+					for(i32 x=pos.x; x<pos.x + size.x; ++x)
 						cell_draw_off(point(x, y), ' ', CLR_WHITE, CLR_BLACK);
 
 				break;
@@ -406,44 +406,25 @@ void edit_stack_step_out()
 
 void board_save()
 {
-	circuit_save(board_get_edit_circuit(), "res/test.circ");
+	circuit_save(board.edit_stack[0], "res/test.circ");
 }
 
 void board_load()
 {
-	circuit_load(board_get_edit_circuit(), "res/test.circ");
+	circuit_load(board.edit_stack[0], "res/test.circ");
 	board.edit_index = 0;
 }
 
 void board_yank()
 {
-	/*
 	if (board.visual)
 	{
 		Rect v_rect = rect(board.vis_origin, board.cursor);
-		circuit_copy(clipboard, board_get_edit_circuit());
-
-		// Cull everything outside of the vis-rect
-		{
-			for(u32 i=0; i<clipboard->node_num; ++i)
-			{
-				Node* node = &clipboard->nodes[i];
-				if (!point_in_rect(node->pos, v_rect))
-					node_delete(clipboard, node);
-			}
-
-			for(u32 i=0; i<clipboard->inv_num; ++i)
-			{
-				Inverter* inv= &clipboard->inverters[i];
-				if (!point_in_rect(inv->pos, v_rect))
-					inverter_delete(clipboard, inv);
-			}
-		}
+		circuit_copy_rect(clipboard, board_get_edit_circuit(), v_rect);
 
 		circuit_shift(clipboard, point_inv(v_rect.min));
 		board.visual = false;
 	}
-	*/
 }
 
 void board_put()

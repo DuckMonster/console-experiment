@@ -5,19 +5,19 @@
 Thing_Type_Data type_data[] =
 {
 	// Thing types are bit-masks as well, so the type data need to be spaced accordingly...
-	{NULL, NULL, NULL},
+	{NULL, NULL, NULL, NULL},
 	// 1
-	{node_on_deleted, NULL, NULL},
+	{node_on_deleted, NULL, NULL, NULL},
 	// 2
-	{inverter_on_deleted, NULL, NULL},
-	{NULL, NULL, NULL},
+	{inverter_on_deleted, NULL, NULL, NULL},
+	{NULL, NULL, NULL, NULL},
 	// 4
-	{chip_on_deleted, chip_on_save, chip_on_load},
-	{NULL, NULL, NULL},
-	{NULL, NULL, NULL},
-	{NULL, NULL, NULL},
+	{chip_on_deleted, chip_on_save, chip_on_load, chip_on_copy},
+	{NULL, NULL, NULL, NULL},
+	{NULL, NULL, NULL, NULL},
+	{NULL, NULL, NULL, NULL},
 	// 8
-	{NULL, NULL, NULL},
+	{NULL, NULL, NULL, NULL},
 };
 
 u32 tic_num = 0;
@@ -174,6 +174,11 @@ Node* node_create(Circuit* circ, Point pos)
 	assert(sizeof(Node) <= sizeof(Thing));
 	Node* node = (Node*)thing_create(circ, THING_Node, pos);
 
+	// Dirty up close-by inverters
+	Inverter* inv = inverter_find(circ, point_sub(pos, point(1, 0)));
+	if (inv)
+		inverter_make_dirty(circ, inv);
+
 	// Invalidate right away in case inverters are close-by
 	node_update_state(circ, node);
 
@@ -192,6 +197,20 @@ void node_on_deleted(Circuit* circ, void* ptr)
 		if (other)
 			node_update_state(circ, other);
 	}
+}
+
+void node_set_powered(Circuit* circ, Node* node, bool powered)
+{
+	if (powered)
+	{
+		node->state |= POWER_Powered;
+	}
+	else
+	{
+		node->state &= ~POWER_Powered;
+	}
+
+	node_update_state(circ,node);
 }
 
 void node_connect(Circuit* circ, Node* a, Node* b)
@@ -256,9 +275,7 @@ void node_disconnect(Circuit* circ, Node* a, Node* b)
 }
 
 i32 recurse_num = 0;
-// Updates the state of a node-batch
-// If the node is on, it will spread it to its connections
-// If it isn't, it will check if any of its connections recursively are powered and set itself
+// Check if this node batch contains a powered node
 bool node_batch_contains_power(Circuit* circ, Node* node, i32 recurse_id)
 {
 	if (recurse_id < 0)
@@ -269,9 +286,8 @@ bool node_batch_contains_power(Circuit* circ, Node* node, i32 recurse_id)
 
 	node->recurse_id = recurse_id;
 
-	// If we have an active inverter to our left, we have a power source!
-	Inverter* inv = inverter_find(circ, point_add(node->pos, point(-1, 0)));
-	if (inv && inv->active)
+	// This node is powered!
+	if (node->state & POWER_Powered)
 		return true;
 
 	// Otherwise, keep searching...
@@ -283,13 +299,31 @@ bool node_batch_contains_power(Circuit* circ, Node* node, i32 recurse_id)
 	}
 
 	// Follow links
-	if (node->link_type == LINK_Chip)
+	if (node->link_type != LINK_None)
 	{
-		Chip* chip = chip_get(circ, node->link_chip);
-		assert(chip);
+		Node* link_node_ptr = NULL;
+		Circuit* link_circ = NULL;
 
-		if (circuit_get_public_state(chip->circuit, node->link_index))
-			return true;
+		// Get which circuit to poll
+		if (node->link_type == LINK_Chip)
+		{
+			Chip* chip = chip_get(circ, node->link_chip);
+			assert(chip);
+
+			link_circ = chip->circuit;
+		}
+	 	else
+		{
+			link_circ = circ->parent;
+		}
+
+		// Then poll the link node
+		if (link_circ)
+		{
+			Node* other = node_get(link_circ, node->link_node);
+			if (other && node_batch_contains_power(link_circ, other, recurse_id))
+				return true;
+		}
 	}
 
 	return false;
@@ -304,15 +338,27 @@ void node_batch_set_state(Circuit* circ, Node* node, bool active, i32 recurse_id
 		return;
 
 	// If the state will change, make output inverters as dirty!
-	if (node->state != active)
+	if ((node->state & POWER_On) != active)
 	{
 		Inverter* inv = inverter_find(circ, point_add(node->pos, point(1, 0)));
 		if (inv)
 			inverter_make_dirty(circ, inv);
+
+		// Also if this is a link-node to a chip, make the chip dirty
+		Chip* chip = chip_get(circ, node->link_chip);
+		if (chip)
+			chip_make_dirty(circ, chip);
 	}
 
 	node->recurse_id = recurse_id;
-	node->state = active;
+	if (active)
+	{
+		node->state |= POWER_On;
+	}
+	else
+	{
+		node->state &= ~POWER_On;
+	}
 
 	// Spread the state
 	for(u32 i=0; i<4; ++i)
@@ -322,13 +368,32 @@ void node_batch_set_state(Circuit* circ, Node* node, bool active, i32 recurse_id
 			node_batch_set_state(circ, other, active, recurse_id);
 	}
 
-	// Follow links
-	if (node->link_type == LINK_Chip)
-	{
-		Chip* chip = chip_get(circ, node->link_chip);
-		assert(chip);
 
-		circuit_set_public_state(chip->circuit, node->link_index, active);
+	// Follow links
+	if (node->link_type != LINK_None)
+	{
+		Circuit* link_circ = NULL;
+
+		// Get which circuit to poll
+		if (node->link_type == LINK_Chip)
+		{
+			Chip* chip = chip_get(circ, node->link_chip);
+			assert(chip);
+
+			link_circ = chip->circuit;
+		}
+	 	else
+		{
+			link_circ = circ->parent;
+		}
+
+		// Then poll the link node
+		if (link_circ)
+		{
+			Node* other = node_get(link_circ, node->link_node);
+			if (other)
+				node_batch_set_state(link_circ, other, active, recurse_id);
+		}
 	}
 }
 
@@ -427,7 +492,10 @@ void inverter_on_deleted(Circuit* circ, void* ptr)
 	// If there is a target-node to this inverter, update it
 	Node* node = node_find(circ, point_add(inv->pos, point(1, 0)));
 	if (node)
-		node_update_state(circ, node);
+		node_set_powered(circ, node, false);
+
+	if (inv->dirty)
+		circ->dirty_counter--;
 }
 
 void inverter_make_dirty(Circuit* circ, Inverter* inv)
@@ -436,7 +504,7 @@ void inverter_make_dirty(Circuit* circ, Inverter* inv)
 		return;
 
 	inv->dirty = true;
-	circ->dirty_inverters++;
+	circ->dirty_counter++;
 }
 
 bool inverter_clean_up(Circuit* circ, Inverter* inv)
@@ -452,7 +520,7 @@ bool inverter_clean_up(Circuit* circ, Inverter* inv)
 
 	inv->tic = tic_num;
 	inv->dirty = false;
-	circ->dirty_inverters--;
+	circ->dirty_counter--;
 
 	// Update state
 	Node* src_node = node_find(circ, point_add(inv->pos, point(-1, 0)));
@@ -465,15 +533,14 @@ bool inverter_clean_up(Circuit* circ, Inverter* inv)
 		inv->active = true;
 	}
 
-	// Did our state change?
-	if (inv->active != prev_active || true)
+	Node* tar_node = node_find(circ, point_add(inv->pos, point(1, 0)));
+	if (tar_node)
 	{
-		// In that case, update nodes
-		Node* tar_node = node_find(circ, point_add(inv->pos, point(1, 0)));
-		if (tar_node)
-		{
-			node_update_state(circ, tar_node);
-		}
+		bool tar_node_powered = tar_node->state & POWER_Powered;
+
+		// Did our state change?
+		if (inv->active != tar_node_powered)
+			node_set_powered(circ, tar_node, inv->active);
 	}
 
 	return true;
@@ -496,6 +563,7 @@ Chip* chip_create(Circuit* circ, Point pos)
 
 	chip->size = point(3, 5);
 	chip->circuit = circuit_make("CHIP");
+	chip->circuit->parent = circ;
 	chip->link_nodes = malloc(sizeof(Thing_Id) * MAX_PUBLIC_NODES);
 	mem_zero(chip->link_nodes, sizeof(Thing_Id) * MAX_PUBLIC_NODES);
 
@@ -522,25 +590,42 @@ void chip_on_load(Circuit* circ, void* ptr, FILE* file)
 	Chip* chip = ptr;
 	chip->circuit = circuit_make("CHIP");
 	circuit_fread(chip->circuit, file);
+	chip->circuit->parent = circ;
 
 	chip->link_nodes = malloc(sizeof(Thing_Id) * MAX_PUBLIC_NODES);
 	fread(chip->link_nodes, sizeof(Thing_Id), MAX_PUBLIC_NODES, file);
 }
 
+void chip_on_copy(Circuit* circ, void* ptr, void* other)
+{
+	Chip* chip = ptr;
+	Chip* chip_other = other;
+
+	chip->circuit = circuit_make("CHIP");
+	circuit_copy(chip->circuit, chip_other->circuit);
+	chip->circuit->parent = circ;
+
+	chip->link_nodes = malloc(sizeof(Thing_Id) * MAX_PUBLIC_NODES);
+	mem_zero(chip->link_nodes, sizeof(Thing_Id) * MAX_PUBLIC_NODES);
+}
+
 void chip_update(Circuit* circ, Chip* chip)
 {
+	circuit_run_tic(chip->circuit);
+	u32 max_y = 2;
+
 	for(u32 i=0; i<MAX_PUBLIC_NODES; ++i)
 	{
 		Node* pub_node = node_get(chip->circuit, chip->circuit->public_nodes[i]);
 		Node* chp_node = node_get(circ, chip->link_nodes[i]);
 
-		// Public nodes have changed!
-		if (pub_node != chp_node)
+		// Weird check, if they're not both NULL or not both some value
+		if ((pub_node == NULL) != (chp_node == NULL))
 		{
 			// It was created...
 			if (pub_node)
 			{
-				Point chp_node_pos = point_add(chip->pos, point(-1, 1 + i * 2));
+				Point chp_node_pos = point_add(chip->pos, point(-1, 1 + i));
 
 				// Find or create a representative link node
 				chp_node = node_find(circ, chp_node_pos);
@@ -549,7 +634,11 @@ void chip_update(Circuit* circ, Chip* chip)
 
 				chp_node->link_type = LINK_Chip;
 				chp_node->link_chip = thing_id(circ, (Thing*)chip);
-				chp_node->link_index = i;
+				chp_node->link_node = thing_id(chip->circuit, (Thing*)pub_node);
+
+				pub_node->link_type = LINK_Public;
+				pub_node->link_node = thing_id(circ, (Thing*)chp_node);
+
 				chip->link_nodes[i] = thing_id(circ, (Thing*)chp_node);
 			}
 			// It was destroyed, so destroy the chip node as well
@@ -560,8 +649,34 @@ void chip_update(Circuit* circ, Chip* chip)
 		}
 
 		if (chp_node)
+		{
 			node_update_state(circ, chp_node);
+			max_y = 1 + i;
+		}
 	}
+
+	chip->size.y = max_y + 2;
+}
+
+void chip_make_dirty(Circuit* circ, Chip* chip)
+{
+	if (chip->dirty)
+		return;
+
+	chip->dirty = true;
+	circ->dirty_counter++;
+}
+
+bool chip_clean_up(Circuit* circ, Chip* chip)
+{
+	if (!chip->dirty)
+		return false;
+
+	chip->dirty = false;
+	circ->dirty_counter--;
+
+	chip_update(circ, chip);
+	return true;
 }
 
 /* CIRCUIT */
@@ -579,55 +694,51 @@ void circuit_free(Circuit* circ)
 	free(circ);
 }
 
-bool circuit_run_tic(Circuit* circ)
+u32 clean_num = 0;
+void circuit_run_tic(Circuit* circ)
 {
-	bool was_cleaned = false;
-	THINGS_FOREACH(circ, THING_Inverter)
-	{
-		Inverter* inv = (Inverter*)it;
-
-		bool clean = inverter_clean_up(circ, inv);
-		was_cleaned |= clean;
-	}
-
-	return was_cleaned;
-}
-
-void circuit_tic(Circuit* circ)
-{
-	tic_num++;
-	u32 iterations = 0;
-	u32 num_cleaned_inverters = 0;
-
-	// Update all chip input/outputs
+	// Start by force-updating all the chips
 	THINGS_FOREACH(circ, THING_Chip)
 	{
 		chip_update(circ, (Chip*)it);
 	}
 
-	// Update all inverters while there are dirty ones
-	while(circ->dirty_inverters)
+	bool was_cleaned = false;
+	while(circ->dirty_counter)
 	{
-		iterations++;
 		bool was_cleaned = false;
 
-		was_cleaned |= circuit_run_tic(circ);
+		THINGS_FOREACH(circ, THING_Inverter)
+		{
+			bool cleaned = inverter_clean_up(circ, (Inverter*)it);
+			was_cleaned |= cleaned;
+			clean_num += cleaned;
+		}
 
-		// All dirty inverters might have already ticked, but remain dirty
-		// Continue cleaning next tic instead
+		THINGS_FOREACH(circ, THING_Chip)
+		{
+			bool cleaned = chip_clean_up(circ, (Chip*)it);
+			was_cleaned |= cleaned;
+			clean_num += cleaned;
+		}
+
+		// If nothing was cleaned, inverters might have had to tic twice, continue next
+		// tic instead
 		if (!was_cleaned)
 			break;
 	}
+}
 
-	THINGS_FOREACH(circ, THING_Chip)
-	{
-		Chip* chip = (Chip*)it;
-		circuit_tic(chip->circuit);
-	}
+void circuit_tic(Circuit* circ)
+{
+	tic_num++;
+	clean_num = 0;
 
-	if (num_cleaned_inverters > 0)
+	circuit_run_tic(circ);
+
+	if (clean_num > 0)
 	{
-		log("TIC iter=%d", num_cleaned_inverters, iterations);
+		log("TIC iter=%d", clean_num);
 	}
 }
 
@@ -664,6 +775,27 @@ void circuit_merge(Circuit* circ, Circuit* other)
 void circuit_copy(Circuit* circ, Circuit* other)
 {
 	memcpy(circ, other, sizeof(Circuit));
+	THINGS_FOREACH(circ, THING_All)
+	{
+		if (type_data[it->type].copy_proc)
+		{
+			u32 index = it - circ->things;
+			Thing* other_thing = &other->things[index];
+
+			type_data[it->type].copy_proc(circ, it, other_thing);
+		}
+	}
+}
+
+void circuit_copy_rect(Circuit* circ, Circuit* other, Rect copy_rect)
+{
+	circuit_copy(circ, other);
+	THINGS_FOREACH(circ, THING_All)
+	{
+		Rect thing_rect = rect(it->pos, point_add(it->pos, point_sub(it->size, point(1, 1))));
+		if (!rect_rect_intersect(thing_rect, copy_rect))
+			thing_delete(circ, it);
+	}
 }
 
 void circuit_shift(Circuit* circ, Point amount)
@@ -681,7 +813,7 @@ void circuit_fwrite(Circuit* circ, FILE* file)
 {
 	fwrite_t(circ->name, file);
 	fwrite_t(circ->gen_num, file);
-	fwrite_t(circ->dirty_inverters, file);
+	fwrite_t(circ->dirty_counter, file);
 
 	// Write things
 	fwrite_t(circ->thing_num, file);
@@ -704,7 +836,7 @@ void circuit_fread(Circuit* circ, FILE* file)
 
 	fread_t(circ->name, file);
 	fread_t(circ->gen_num, file);
-	fread_t(circ->dirty_inverters, file);
+	fread_t(circ->dirty_counter, file);
 
 	// Read things
 	fread_t(circ->thing_num, file);
@@ -754,7 +886,15 @@ bool circuit_get_public_state(Circuit* circ, u32 index)
 	if (!node)
 		return false;
 
-	return node_batch_contains_power(circ, node, -1);
+	bool was_powered = node->state & POWER_Powered;
+	node->state &= ~POWER_Powered;
+
+	bool state = node_batch_contains_power(circ, node, -1);
+
+	if (was_powered)
+		node->state |= POWER_Powered;
+
+	return state;
 }
 
 void circuit_set_public_state(Circuit* circ, u32 index, bool state)
@@ -763,6 +903,5 @@ void circuit_set_public_state(Circuit* circ, u32 index, bool state)
 	if (!node)
 		return;
 
-	state |= node_batch_contains_power(circ, node, -1);
-	node_batch_set_state(circ, node, state, -1);
+	node_set_powered(circ, node, state);
 }

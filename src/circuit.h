@@ -66,12 +66,14 @@ bool _thing_it_inc(Circuit* circ, Thing** thing, u8 type_mask);
 typedef void (*Thing_Delete_Proc)(Circuit* circ, void* thing);
 typedef void (*Thing_Save_Proc)(Circuit* circ, void* thing, FILE* file);
 typedef void (*Thing_Load_Proc)(Circuit* circ, void* thing, FILE* file);
+typedef void (*Thing_Copy_Proc)(Circuit* circ, void* thing, void* other);
 
 typedef struct
 {
 	Thing_Delete_Proc delete_proc;
 	Thing_Save_Proc save_proc;
 	Thing_Load_Proc load_proc;
+	Thing_Copy_Proc copy_proc;
 } Thing_Type_Data;
 
 /* NODES */
@@ -82,11 +84,11 @@ enum Node_Link_Type
 	LINK_Chip,
 };
 
-enum Node_State
+enum Node_Power_Mask
 {
-	STATE_Off,
-	STATE_On,
-	STATE_Powered,
+	POWER_Off = 0,
+	POWER_On = 1,
+	POWER_Powered = 2,
 };
 
 typedef struct
@@ -97,8 +99,8 @@ typedef struct
 	i32 recurse_id;
 
 	u8 link_type;
+	Thing_Id link_node;
 	Thing_Id link_chip;
-	u32 link_index;
 
 	Thing_Id connections[4];
 } Node;
@@ -107,6 +109,8 @@ Node* node_find(Circuit* circ, Point pos);
 Node* node_get(Circuit* circ, Thing_Id id);
 Node* node_create(Circuit* circ, Point pos);
 void node_on_deleted(Circuit* circ, void* ptr);
+
+void node_set_powered(Circuit* circ, Node* node, bool powered);
 
 void node_update_state(Circuit* circ, Node* node);
 void node_toggle_public(Circuit* circ, Node* node);
@@ -146,6 +150,8 @@ typedef struct
 {
 	THING_IMPL();
 
+	bool dirty;
+
 	Circuit* circuit;
 	Thing_Id* link_nodes;
 } Chip;
@@ -156,10 +162,14 @@ Chip* chip_create(Circuit* circ, Point pos);
 void chip_on_deleted(Circuit* circ, void* ptr);
 void chip_on_save(Circuit* circ, void* ptr, FILE* file);
 void chip_on_load(Circuit* circ, void* ptr, FILE* file);
+void chip_on_copy(Circuit* circ, void* ptr, void* other);
 Thing_Id chip_id(Circuit* circ, Chip* chip);
 void chip_delete(Circuit* circ, Chip* chip);
 
 void chip_update(Circuit* circ, Chip* chip);
+
+void chip_make_dirty(Circuit* circ, Chip* chip);
+bool chip_clean_up(Circuit* circ, Chip* chip);
 
 /* CIRCUIT */
 typedef struct Circuit
@@ -168,21 +178,24 @@ typedef struct Circuit
 	u16 gen_num;
 
 	u32 tic_num;
-	u32 dirty_inverters;
+	u32 dirty_counter;
 
 	Thing things[MAX_THINGS];
 	u32 thing_num;
 
 	Thing_Id public_nodes[MAX_PUBLIC_NODES];
+	Circuit* parent;
 } Circuit;
 
 Circuit* circuit_make(const char* name);
 void circuit_free(Circuit* circ);
 
+void circuit_run_tic(Circuit* circ);
 void circuit_tic(Circuit* circ);
 
 void circuit_merge(Circuit* circ, Circuit* other);
 void circuit_copy(Circuit* circ, Circuit* other);
+void circuit_copy_rect(Circuit* circ, Circuit* other, Rect copy_rect);
 void circuit_shift(Circuit* circ, Point amount);
 
 void circuit_save(Circuit* circ, const char* path);

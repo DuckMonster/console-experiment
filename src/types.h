@@ -47,3 +47,4 @@ inline Rect rect(Point a, Point b)
 }
 
 bool point_in_rect(Point point, Rect rect);
+bool rect_rect_intersect(Rect a, Rect b);
