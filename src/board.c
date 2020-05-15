@@ -19,7 +19,7 @@ void board_init()
 void board_tic()
 {
 	// Tick the top entry on the stack first, let it trickle down through chips
-	if (board.tic_mode == TIC_Auto)
+	if (!board.debug)
 		circuit_tic(board.edit_stack[0]);
 }
 
@@ -56,6 +56,48 @@ void draw_edit_stack()
 			pos = cell_write_str(pos, " >> ", CLR_WHITE, CLR_BLACK);
 		}
 	}
+}
+
+void draw_dirty_stack(Dirty_Stack* stack, Point offset, bool is_tic)
+{
+	Circuit* circ = board_get_edit_circuit();
+
+	cell_write_str(point_add(point(0, CELL_ROWS - 2), offset), "----------", CLR_WHITE, (is_tic ? CLR_ORNG_0 : CLR_BLACK));
+
+	static char debug_buff[50];
+	for(u32 i=0; i<stack->count; ++i)
+	{
+		bool top = (i == stack->count - 1);
+		Thing* thing = thing_get(circ, stack->list[i]);
+
+		if (thing)
+			sprintf(debug_buff, "%s (%d, %d)", thing_get_name(thing), thing->pos.x, thing->pos.y);
+		else
+			sprintf(debug_buff, "%s", "NULL");
+
+		Point pos = point(0, CELL_ROWS - 3 - i);
+		cell_write_str(point_add(pos, offset), debug_buff, CLR_WHITE, ((top && is_tic) ? CLR_BLUE_0 : CLR_BLACK));
+	}
+}
+
+void draw_debug()
+{
+	static char debug_buff[50];
+	Circuit* circ = board_get_edit_circuit();
+
+	sprintf(debug_buff, "DEBUG TIC[%d]", tic);
+	cell_write_str(point(0, CELL_ROWS - 1), debug_buff, CLR_WHITE, CLR_BLACK);
+
+	// Draw the next thing to be ticked
+	{
+		Dirty_Stack* tic_stack = &circ->dirty_stacks[circ->stack_index];
+		Thing* thing = dirty_stack_peek(tic_stack, circ);
+		if (thing)
+			cell_draw_off(thing->pos, -1, CLR_WHITE, CLR_BLUE_0);
+	}
+
+	draw_dirty_stack(&circ->dirty_stacks[0], point(0, 0), circ->stack_index == 0);
+	draw_dirty_stack(&circ->dirty_stacks[1], point(20, 0), circ->stack_index == 1);
 }
 
 void draw_connection(Rect rect, bool state)
@@ -138,7 +180,7 @@ void draw_circuit(Circuit* circ)
 					u8 direction = get_direction(node->pos, other->pos);
 					cell_or_off(node->pos, direction);
 
-					draw_connection(rect(node->pos, other->pos), node->state);
+					draw_connection(rect(node->pos, other->pos), node->state && other->state);
 				}
 				break;
 			}
@@ -167,6 +209,16 @@ void draw_circuit(Circuit* circ)
 					for(i32 x=pos.x; x<pos.x + size.x; ++x)
 						cell_draw_off(point(x, y), ' ', CLR_WHITE, CLR_BLACK);
 
+				break;
+			}
+
+			// DRAW DELAY
+			case THING_Delay:
+			{
+				Delay* delay = (Delay*)it;
+				i32 color = delay->active ? CLR_RED_0 : CLR_RED_1;
+
+				cell_draw_off(delay->pos, 'o', color, -1);
 				break;
 			}
 		}
@@ -199,6 +251,10 @@ void board_draw()
 	}
 
 	draw_circuit(board_get_edit_circuit());
+	draw_edit_stack();
+
+	if (board.debug)
+		draw_debug();
 
 	if (!board.visual)
 	{
@@ -230,8 +286,6 @@ void board_draw()
 		cursor_cell->bg_color = CLR_ORNG_0;
 		cursor_cell->fg_color = CLR_ORNG_1;
 	}
-
-	draw_edit_stack();
 }
 
 void delete_things(Circuit* circ, Thing** thing_arr, u32 count)
@@ -360,6 +414,11 @@ void board_place_chip()
 	chip_create(board_get_edit_circuit(), board.cursor);
 }
 
+void board_place_delay()
+{
+	delay_create(board_get_edit_circuit(), board.cursor);
+}
+
 void board_toggle_public()
 {
 	Circuit* circ = board_get_edit_circuit();
@@ -445,6 +504,7 @@ bool board_key_event(u32 code, char chr, u32 mods)
 			case KEY_PLACE_INVERTER: board_place_inverter(); break;
 			//case KEY_PLACE_COMMENT: board_place_comment(); break;
 			case KEY_PLACE_CHIP: board_place_chip(); break;
+			case KEY_PLACE_DELAY: board_place_delay(); break;
 
 			case KEY_DELETE: board_delete(); break;
 			case KEY_CANCEL: 
@@ -474,6 +534,7 @@ bool board_key_event(u32 code, char chr, u32 mods)
 			case KEY_YANK: board_yank(); break;
 			case KEY_PUT: board_put(); break;
 
+			case KEY_SUBTIC: circuit_subtic(board.edit_stack[0]); break;
 			case KEY_TIC: circuit_tic(board.edit_stack[0]); break;
 
 			default: return false;
@@ -493,7 +554,7 @@ bool board_key_event(u32 code, char chr, u32 mods)
 
 			case KEY_DELETE: prompt_msg("Error", "This is an error"); break;
 
-			case KEY_TIC: board.tic_mode = !board.tic_mode; break;
+			case KEY_TIC: board.debug = !board.debug; break;
 		}
 	}
 

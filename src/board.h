@@ -6,6 +6,7 @@
 #define KEY_PLACE_INVERTER 0x17
 #define KEY_PLACE_COMMENT 0x2E
 #define KEY_PLACE_CHIP 0x2E
+#define KEY_PLACE_DELAY 0x20
 
 #define KEY_TOGGLE_PUBLIC 0x19
 
@@ -23,15 +24,10 @@
 
 #define KEY_VISUAL_MODE 0x2F
 #define KEY_TIC 0x34
+#define KEY_SUBTIC 0x33
 
 #define KEY_PROMPT 0x20
 #define EDIT_STACK_SIZE 8
-
-enum Tic_Mode
-{
-	TIC_Auto,
-	TIC_Single,
-};
 
 /* BOARD */
 typedef struct
@@ -45,7 +41,7 @@ typedef struct
 	Circuit* edit_stack[EDIT_STACK_SIZE];
 	i32 edit_index;
 
-	u8 tic_mode;
+	bool debug;
 } Board;
 extern Board board;
 

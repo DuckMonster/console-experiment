@@ -5,19 +5,19 @@
 Thing_Type_Data type_data[] =
 {
 	// Thing types are bit-masks as well, so the type data need to be spaced accordingly...
-	{NULL, NULL, NULL, NULL},
+	{"NULL", NULL, NULL, NULL, NULL, NULL, NULL, NULL, PUSH_Top},
 	// 1
-	{node_on_deleted, NULL, NULL, NULL},
+	{"Node", node_on_deleted, NULL, NULL, NULL, node_on_merge, NULL, node_on_clean, PUSH_Top},
 	// 2
-	{inverter_on_deleted, NULL, NULL, NULL},
-	{NULL, NULL, NULL, NULL},
+	{"Inverter", inverter_on_deleted, NULL, NULL, NULL, NULL, inverter_on_dirty, inverter_on_clean, PUSH_Top},
+	{"NULL", NULL, NULL, NULL, NULL, NULL, NULL, NULL, PUSH_Top},
 	// 4
-	{chip_on_deleted, chip_on_save, chip_on_load, chip_on_copy},
-	{NULL, NULL, NULL, NULL},
-	{NULL, NULL, NULL, NULL},
-	{NULL, NULL, NULL, NULL},
+	{"Chip", chip_on_deleted, chip_on_save, chip_on_load, chip_on_copy, NULL, NULL, NULL, PUSH_Top},
+	{"NULL", NULL, NULL, NULL, NULL, NULL, NULL, NULL, PUSH_Top},
+	{"NULL", NULL, NULL, NULL, NULL, NULL, NULL, NULL, PUSH_Top},
+	{"NULL", NULL, NULL, NULL, NULL, NULL, NULL, NULL, PUSH_Top},
 	// 8
-	{NULL, NULL, NULL, NULL},
+	{"Delay", delay_on_deleted, NULL, NULL, NULL, NULL, NULL, delay_on_clean, PUSH_Bottom},
 };
 
 u32 tic_num = 0;
@@ -71,13 +71,16 @@ Thing* thing_create(Circuit* circ, u8 type, Point pos)
 	if (index >= circ->thing_num)
 		circ->thing_num = index + 1;
 
+	// Created things are always dirty
+	thing_set_dirty(circ, thing);
+
 	return thing;
 }
 
 void thing_delete(Circuit* circ, Thing* thing)
 {
-	if (type_data[thing->type].delete_proc)
-		type_data[thing->type].delete_proc(circ, thing);
+	if (type_data[thing->type].on_delete)
+		type_data[thing->type].on_delete(circ, thing);
 
 	mem_zero(thing, sizeof(Thing));
 }
@@ -86,9 +89,7 @@ Thing* thing_find(Circuit* circ, Point pos, u8 type_mask)
 {
 	THINGS_FOREACH(circ, type_mask)
 	{
-		// -1 on the rect, size 1 size means x.min == x.max
-		Rect thing_rect = rect(it->pos, point_add(it->pos, point_sub(it->size, point(1, 1))));
-		if (point_in_rect(pos, thing_rect))
+		if (point_in_rect(pos, thing_get_bbox(it)))
 			return it;
 	}
 
@@ -150,13 +151,113 @@ u32 things_find(Circuit* circ, Rect rect, Thing** out_arr, u32 arr_size)
 	u32 index = 0;
 	THINGS_FOREACH(circ, THING_All)
 	{
-		if (point_in_rect(it->pos, rect))
+		if (rect_rect_intersect(thing_get_bbox(it), rect))
 			out_arr[index++] = it;
 	}
 
 	return index;
 }
 
+const char* thing_get_name(Thing* thing)
+{
+	if (thing == NULL)
+		return "NULL";
+
+	return type_data[thing->type].name;
+}
+
+Rect thing_get_bbox(Thing* thing)
+{
+	return rect(thing->pos, point_add(thing->pos, point_add(thing->size, point(-1, -1))));
+}
+
+// Dirty stack
+u32 tic = 1;
+u32 tic_push_count = 0;
+u32 tic_pop_count = 0;
+void dirty_stack_push(Dirty_Stack* stack, Circuit* circ, Thing* thing)
+{
+	if (thing->dirty)
+		return;
+
+	assert(stack->count < DIRTY_STACK_SIZE);
+
+	Thing_Id id = thing_id(circ, thing);
+	u8 push_type = type_data[thing->type].push_type;
+	if (push_type == PUSH_Top)
+	{
+		stack->list[stack->count++] = id;
+	}
+	else
+	{
+		// Move every entry in the stack upwards
+		memmove(stack->list + 1, stack->list, sizeof(Thing_Id) * stack->count);
+		stack->list[0] = id;
+		stack->count++;
+	}
+
+	tic_push_count++;
+	thing->dirty = true;
+}
+
+Thing* dirty_stack_pop(Dirty_Stack* stack, Circuit* circ)
+{
+	assert(stack->count > 0);
+
+	// Iterate through the stack to find a valid (if stuff was deleted mid-tic)
+	Thing* thing = NULL;
+	do
+	{
+		if (stack->count == 0)
+			return NULL;
+
+		thing = thing_get(circ, stack->list[--stack->count]);
+	} while(!thing);
+	assert(thing->dirty);
+
+	thing->dirty = false;
+	tic_pop_count++;
+
+	return thing;
+}
+
+Thing* dirty_stack_peek(Dirty_Stack* stack, Circuit* circ)
+{
+	if (stack->count == 0)
+		return NULL;
+
+	return thing_get(circ, stack->list[stack->count - 1]);
+}
+
+void thing_set_dirty(Circuit* circ, Thing* thing)
+{
+	Dirty_Stack* stack = &circ->dirty_stacks[circ->stack_index];
+
+	// If this thing ticed this frame, push onto the next stack
+	if (thing->tic == tic)
+		stack = &circ->dirty_stacks[!circ->stack_index];
+
+	dirty_stack_push(stack, circ, thing);
+
+	if (type_data[thing->type].on_dirty)
+		type_data[thing->type].on_dirty(circ, thing);
+}
+
+void thing_dirty_at(Circuit* circ, Point pos)
+{
+	Thing* thing = thing_find(circ, pos, THING_All);
+	if (!thing)
+		return;
+
+	thing_set_dirty(circ, thing);
+}
+
+void thing_clean(Circuit* circ, Thing* thing)
+{
+	thing->tic = tic;
+	if (type_data[thing->type].on_clean)
+		type_data[thing->type].on_clean(circ, thing);
+}
 
 /* NODES */
 Node* node_find(Circuit* circ, Point pos)
@@ -177,17 +278,13 @@ Node* node_create(Circuit* circ, Point pos)
 	// Dirty up close-by inverters
 	Inverter* inv = inverter_find(circ, point_sub(pos, point(1, 0)));
 	if (inv)
-		inverter_make_dirty(circ, inv);
-
-	// Invalidate right away in case inverters are close-by
-	node_update_state(circ, node);
+		thing_set_dirty(circ, (Thing*)inv);
 
 	return node;
 }
 
-void node_on_deleted(Circuit* circ, void* ptr)
+void node_on_deleted(Circuit* circ, Node* node)
 {
-	Node* node = ptr;
 	node->valid = false;
 
 	// Deleting node will dirty its connections!
@@ -195,7 +292,30 @@ void node_on_deleted(Circuit* circ, void* ptr)
 	{
 		Node* other = node_get(circ, node->connections[i]);
 		if (other)
-			node_update_state(circ, other);
+			thing_set_dirty(circ, (Thing*)other);
+	}
+
+	// Also dirty whatever this node may be sourcing
+	thing_dirty_at(circ, point_add(node->pos, point(1, 0)));
+}
+
+void node_on_merge(Circuit* circ, Node* node, Node* other)
+{
+	// When merging nodes, merge the connections!
+	for(u32 other_index = 0; other_index < 4; ++other_index)
+	{
+		// Not a valid connection, skip..
+		if (id_null(other->connections[other_index]))
+			continue;
+
+		for(u32 our_index = 0; our_index < 4; ++our_index)
+		{
+			// Cant copy into this slot! Its busy!
+			if (!id_null(node->connections[our_index]))
+				continue;
+
+			node->connections[our_index] = other->connections[other_index];
+		}
 	}
 }
 
@@ -210,7 +330,7 @@ void node_set_powered(Circuit* circ, Node* node, bool powered)
 		node->state &= ~POWER_Powered;
 	}
 
-	node_update_state(circ,node);
+	thing_set_dirty(circ, (Thing*)node);
 }
 
 void node_connect(Circuit* circ, Node* a, Node* b)
@@ -256,7 +376,7 @@ void node_connect(Circuit* circ, Node* a, Node* b)
 
 	// After a connection is made, the batch is invalidated
 	// (since a and b are now connected, they will both be made dirty)
-	node_update_state(circ, a);
+	thing_set_dirty(circ, (Thing*)a);
 }
 
 void node_disconnect(Circuit* circ, Node* a, Node* b)
@@ -329,6 +449,7 @@ bool node_batch_contains_power(Circuit* circ, Node* node, i32 recurse_id)
 	return false;
 }
 
+// Returns if state was set
 void node_batch_set_state(Circuit* circ, Node* node, bool active, i32 recurse_id)
 {
 	if (recurse_id < 0)
@@ -340,14 +461,7 @@ void node_batch_set_state(Circuit* circ, Node* node, bool active, i32 recurse_id
 	// If the state will change, make output inverters as dirty!
 	if ((node->state & POWER_On) != active)
 	{
-		Inverter* inv = inverter_find(circ, point_add(node->pos, point(1, 0)));
-		if (inv)
-			inverter_make_dirty(circ, inv);
-
-		// Also if this is a link-node to a chip, make the chip dirty
-		Chip* chip = chip_get(circ, node->link_chip);
-		if (chip)
-			chip_make_dirty(circ, chip);
+		thing_dirty_at(circ, point_add(node->pos, point(1, 0)));
 	}
 
 	node->recurse_id = recurse_id;
@@ -397,7 +511,7 @@ void node_batch_set_state(Circuit* circ, Node* node, bool active, i32 recurse_id
 	}
 }
 
-void node_update_state(Circuit* circ, Node* node)
+void node_on_clean(Circuit* circ, Node* node)
 {
 	bool has_power = node_batch_contains_power(circ, node, -1);
 	node_batch_set_state(circ, node, has_power, -1);
@@ -434,7 +548,7 @@ void node_toggle_public(Circuit* circ, Node* node)
 		}
 	}
 
-	node_update_state(circ, node);
+	thing_set_dirty(circ, (Thing*)node);
 }
 
 /* CONNECTIONS */
@@ -477,50 +591,26 @@ Inverter* inverter_create(Circuit* circ, Point pos)
 	assert(sizeof(Inverter) <= sizeof(Thing));
 
 	Inverter* inv = (Inverter*)thing_create(circ, THING_Inverter, pos);
-
-	// Inverters start out dirty!
-	inverter_make_dirty(circ, inv);
-
 	return inv;
 }
 
-void inverter_on_deleted(Circuit* circ, void* ptr)
+void inverter_on_deleted(Circuit* circ, Inverter* inv)
 {
-	Inverter* inv = ptr;
 	inv->valid = false;
 
 	// If there is a target-node to this inverter, update it
 	Node* node = node_find(circ, point_add(inv->pos, point(1, 0)));
 	if (node)
 		node_set_powered(circ, node, false);
-
-	if (inv->dirty)
-		circ->dirty_counter--;
 }
 
-void inverter_make_dirty(Circuit* circ, Inverter* inv)
+void inverter_on_dirty(Circuit* circ, Inverter* inv)
 {
-	if (inv->dirty)
-		return;
-
-	inv->dirty = true;
-	circ->dirty_counter++;
 }
 
-bool inverter_clean_up(Circuit* circ, Inverter* inv)
+void inverter_on_clean(Circuit* circ, Inverter* inv)
 {
-	if (!inv->dirty)
-		return false;
-
-	// Already cleaned this tic
-	if (inv->tic == tic_num)
-		return false;
-
 	bool prev_active = inv->active;
-
-	inv->tic = tic_num;
-	inv->dirty = false;
-	circ->dirty_counter--;
 
 	// Update state
 	Node* src_node = node_find(circ, point_add(inv->pos, point(-1, 0)));
@@ -536,14 +626,12 @@ bool inverter_clean_up(Circuit* circ, Inverter* inv)
 	Node* tar_node = node_find(circ, point_add(inv->pos, point(1, 0)));
 	if (tar_node)
 	{
-		bool tar_node_powered = tar_node->state & POWER_Powered;
+		bool tar_node_powered = !!(tar_node->state & POWER_Powered);
 
 		// Did our state change?
 		if (inv->active != tar_node_powered)
 			node_set_powered(circ, tar_node, inv->active);
 	}
-
-	return true;
 }
 
 Chip* chip_find(Circuit* circ, Point pos)
@@ -570,24 +658,21 @@ Chip* chip_create(Circuit* circ, Point pos)
 	return chip;
 }
 
-void chip_on_deleted(Circuit* circ, void* ptr)
+void chip_on_deleted(Circuit* circ, Chip* chip)
 {
 
 }
 
-
 void circuit_fwrite(Circuit* circ, FILE* file);
 void circuit_fread(Circuit* circ, FILE* file);
-void chip_on_save(Circuit* circ, void* ptr, FILE* file)
+void chip_on_save(Circuit* circ, Chip* chip, FILE* file)
 {
-	Chip* chip = ptr;
 	circuit_fwrite(chip->circuit, file);
 	fwrite(chip->link_nodes, sizeof(Thing_Id), MAX_PUBLIC_NODES, file);
 }
 
-void chip_on_load(Circuit* circ, void* ptr, FILE* file)
+void chip_on_load(Circuit* circ, Chip* chip, FILE* file)
 {
-	Chip* chip = ptr;
 	chip->circuit = circuit_make("CHIP");
 	circuit_fread(chip->circuit, file);
 	chip->circuit->parent = circ;
@@ -596,13 +681,10 @@ void chip_on_load(Circuit* circ, void* ptr, FILE* file)
 	fread(chip->link_nodes, sizeof(Thing_Id), MAX_PUBLIC_NODES, file);
 }
 
-void chip_on_copy(Circuit* circ, void* ptr, void* other)
+void chip_on_copy(Circuit* circ, Chip* chip, Chip* other)
 {
-	Chip* chip = ptr;
-	Chip* chip_other = other;
-
 	chip->circuit = circuit_make("CHIP");
-	circuit_copy(chip->circuit, chip_other->circuit);
+	circuit_copy(chip->circuit, other->circuit);
 	chip->circuit->parent = circ;
 
 	chip->link_nodes = malloc(sizeof(Thing_Id) * MAX_PUBLIC_NODES);
@@ -611,7 +693,6 @@ void chip_on_copy(Circuit* circ, void* ptr, void* other)
 
 void chip_update(Circuit* circ, Chip* chip)
 {
-	circuit_run_tic(chip->circuit);
 	u32 max_y = 2;
 
 	for(u32 i=0; i<MAX_PUBLIC_NODES; ++i)
@@ -650,7 +731,7 @@ void chip_update(Circuit* circ, Chip* chip)
 
 		if (chp_node)
 		{
-			node_update_state(circ, chp_node);
+			thing_set_dirty(circ, (Thing*)chp_node);
 			max_y = 1 + i;
 		}
 	}
@@ -658,25 +739,36 @@ void chip_update(Circuit* circ, Chip* chip)
 	chip->size.y = max_y + 2;
 }
 
-void chip_make_dirty(Circuit* circ, Chip* chip)
+/* DELAY */
+Delay* delay_find(Circuit* circ, Point pos)
 {
-	if (chip->dirty)
-		return;
-
-	chip->dirty = true;
-	circ->dirty_counter++;
+	return (Delay*)thing_find(circ, pos, THING_Delay);
 }
-
-bool chip_clean_up(Circuit* circ, Chip* chip)
+Delay* delay_create(Circuit* circ, Point pos)
 {
-	if (!chip->dirty)
-		return false;
+	return (Delay*)thing_create(circ, THING_Delay, pos);
+}
+void delay_on_deleted(Circuit* circ, Delay* delay)
+{
 
-	chip->dirty = false;
-	circ->dirty_counter--;
+}
+void delay_on_clean(Circuit* circ, Delay* delay)
+{
+	bool prev_active = delay->active;
 
-	chip_update(circ, chip);
-	return true;
+	// Update state
+	Node* src_node = node_find(circ, point_add(delay->pos, point(-1, 0)));
+	delay->active = src_node ? src_node->state : false;
+
+	Node* tar_node = node_find(circ, point_add(delay->pos, point(1, 0)));
+	if (tar_node)
+	{
+		bool tar_node_powered = !!(tar_node->state & POWER_Powered);
+
+		// Did our state change?
+		if (delay->active != tar_node_powered)
+			node_set_powered(circ, tar_node, delay->active);
+	}
 }
 
 /* CIRCUIT */
@@ -694,52 +786,42 @@ void circuit_free(Circuit* circ)
 	free(circ);
 }
 
-u32 clean_num = 0;
-void circuit_run_tic(Circuit* circ)
+void circuit_subtic(Circuit* circ)
 {
-	// Start by force-updating all the chips
-	THINGS_FOREACH(circ, THING_Chip)
+	Dirty_Stack* tic_stack = &circ->dirty_stacks[circ->stack_index];
+	if (tic_stack->count == 0)
+		return;
+
+	if (tic_stack->count != 0)
 	{
-		chip_update(circ, (Chip*)it);
+		Thing* thing = dirty_stack_pop(tic_stack, circ);
+		if (thing)
+			thing_clean(circ, thing);
 	}
 
-	bool was_cleaned = false;
-	while(circ->dirty_counter)
+	// If we emptied our stack this subtic, advance tic
+	if (tic_stack->count == 0)
 	{
-		bool was_cleaned = false;
-
-		THINGS_FOREACH(circ, THING_Inverter)
-		{
-			bool cleaned = inverter_clean_up(circ, (Inverter*)it);
-			was_cleaned |= cleaned;
-			clean_num += cleaned;
-		}
-
-		THINGS_FOREACH(circ, THING_Chip)
-		{
-			bool cleaned = chip_clean_up(circ, (Chip*)it);
-			was_cleaned |= cleaned;
-			clean_num += cleaned;
-		}
-
-		// If nothing was cleaned, inverters might have had to tic twice, continue next
-		// tic instead
-		if (!was_cleaned)
-			break;
+		circ->stack_index = !circ->stack_index;
+		tic++;
 	}
 }
 
 void circuit_tic(Circuit* circ)
 {
-	tic_num++;
-	clean_num = 0;
+	Dirty_Stack* tic_stack = &circ->dirty_stacks[circ->stack_index];
+	if (tic_stack->count == 0)
+		return;
 
-	circuit_run_tic(circ);
-
-	if (clean_num > 0)
+	while(tic_stack->count != 0)
 	{
-		log("TIC iter=%d", clean_num);
+		Thing* thing = dirty_stack_pop(tic_stack, circ);
+		if (thing)
+			thing_clean(circ, thing);
 	}
+
+	circ->stack_index = !circ->stack_index;
+	tic++;
 }
 
 void circuit_merge(Circuit* circ, Circuit* other)
@@ -753,9 +835,14 @@ void circuit_merge(Circuit* circ, Circuit* other)
 	// After that we have to update all of the connection ID's, since the indecies have been shifted
 	for(u32 i=circ->thing_num; i<circ->thing_num + other->thing_num; ++i)
 	{
-		if (circ->things[i].type == THING_Node)
+		// Re-dirty everything
+		Thing* thing = &circ->things[i];
+		thing->dirty = false;
+		thing_set_dirty(circ, thing);
+
+		if (thing->type == THING_Node)
 		{
-			Node* node = (Node*)&circ->things[i];
+			Node* node = (Node*)thing;
 			for(u32 c=0; c<4; ++c)
 			{
 				// We can do this for all connections, since NULL connections have 0 generation anyways
@@ -770,6 +857,35 @@ void circuit_merge(Circuit* circ, Circuit* other)
 	// Avoid repeat generation
 	circ->gen_num = max(circ->gen_num, other->gen_num);
 	circ->thing_num += other->thing_num;
+
+	static Thing* duplicates[4];
+
+	// After all of this, merge all duplicates!
+	THINGS_FOREACH(circ, THING_All)
+	{
+		u32 dup_num = things_find(circ, thing_get_bbox(it), duplicates, 4);
+
+		// Only one thing found, it is the original thing!
+		if (dup_num == 1)
+			continue;
+
+		for(u32 i=0; i<dup_num; ++i)
+		{
+			// This IS the thing we're merging...
+			if (duplicates[i] == it)
+				continue;
+
+			// Only merge stuff of the same type..
+			if (it->type == duplicates[i]->type)
+			{
+				Thing_Merge_Proc merge_proc = type_data[it->type].on_merge;
+				if (merge_proc)
+					merge_proc(circ, it, duplicates[i]);
+			}
+
+			thing_delete(circ, duplicates[i]);
+		}
+	}
 }
 
 void circuit_copy(Circuit* circ, Circuit* other)
@@ -777,12 +893,14 @@ void circuit_copy(Circuit* circ, Circuit* other)
 	memcpy(circ, other, sizeof(Circuit));
 	THINGS_FOREACH(circ, THING_All)
 	{
-		if (type_data[it->type].copy_proc)
+		it->dirty = false;
+		it->tic = 0;
+		if (type_data[it->type].on_copy)
 		{
 			u32 index = it - circ->things;
 			Thing* other_thing = &other->things[index];
 
-			type_data[it->type].copy_proc(circ, it, other_thing);
+			type_data[it->type].on_copy(circ, it, other_thing);
 		}
 	}
 }
@@ -813,7 +931,8 @@ void circuit_fwrite(Circuit* circ, FILE* file)
 {
 	fwrite_t(circ->name, file);
 	fwrite_t(circ->gen_num, file);
-	fwrite_t(circ->dirty_counter, file);
+	fwrite_t(circ->dirty_stacks, file);
+	fwrite_t(circ->stack_index, file);
 
 	// Write things
 	fwrite_t(circ->thing_num, file);
@@ -822,8 +941,8 @@ void circuit_fwrite(Circuit* circ, FILE* file)
 		Thing* thing = &circ->things[i];
 
 		fwrite(thing, sizeof(Thing), 1, file);
-		if (type_data[thing->type].save_proc)
-			type_data[thing->type].save_proc(circ, thing, file);
+		if (type_data[thing->type].on_save)
+			type_data[thing->type].on_save(circ, thing, file);
 	}
 
 	// Write public nodes
@@ -836,7 +955,8 @@ void circuit_fread(Circuit* circ, FILE* file)
 
 	fread_t(circ->name, file);
 	fread_t(circ->gen_num, file);
-	fread_t(circ->dirty_counter, file);
+	fread_t(circ->dirty_stacks, file);
+	fread_t(circ->stack_index, file);
 
 	// Read things
 	fread_t(circ->thing_num, file);
@@ -845,8 +965,8 @@ void circuit_fread(Circuit* circ, FILE* file)
 		Thing* thing = &circ->things[i];
 
 		fread(thing, sizeof(Thing), 1, file);
-		if (type_data[thing->type].load_proc)
-			type_data[thing->type].load_proc(circ, thing, file);
+		if (type_data[thing->type].on_load)
+			type_data[thing->type].on_load(circ, thing, file);
 	}
 
 	// Read public nodes
