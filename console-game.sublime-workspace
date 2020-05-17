@@ -183,16 +183,7 @@
 			"file": "src/circuit.c",
 			"settings":
 			{
-				"buffer_size": 21981,
-				"encoding": "UTF-8",
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "src/circuit.h",
-			"settings":
-			{
-				"buffer_size": 5857,
+				"buffer_size": 22637,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
@@ -201,16 +192,16 @@
 			"file": "src/board.c",
 			"settings":
 			{
-				"buffer_size": 12137,
+				"buffer_size": 12932,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
 		},
 		{
-			"file": "src/board.h",
+			"file": "src/circuit.h",
 			"settings":
 			{
-				"buffer_size": 924,
+				"buffer_size": 6199,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
@@ -359,6 +350,10 @@
 	],
 	"file_history":
 	[
+		"/D/Prog/console-experiment/src/board.h",
+		"/D/Prog/console-experiment/src/circuit.h",
+		"/D/Prog/console-experiment/src/board.c",
+		"/D/Prog/console-experiment/src/circuit.c",
 		"/C/Prog/console-game/src/circuit.h",
 		"/C/Prog/console-game/src/board.c",
 		"/C/Prog/console-game/src/circuit.c",
@@ -482,15 +477,11 @@
 		"/C/Prog/c-engine/src/Runtime/Unit/Unit.h",
 		"/C/Prog/c-engine/bin/debug/config.dat",
 		"/C/Prog/c-engine/src/Runtime/Game/Scene.cpp",
-		"/C/Prog/c-engine/src/Runtime/Game/SceneQuery.cpp",
-		"/C/Prog/c-engine/engine.vcxproj",
-		"/C/Prog/c-engine/src/Runtime/main.cpp",
-		"/C/Prog/c-engine/src/Engine/Collision/HitTest.cpp",
-		"/C/Prog/c-engine/src/Runtime/Weapon/Weapon.h"
+		"/C/Prog/c-engine/src/Runtime/Game/SceneQuery.cpp"
 	],
 	"find":
 	{
-		"height": 27.0
+		"height": 28.0
 	},
 	"find_in_files":
 	{
@@ -546,15 +537,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 21981,
+						"buffer_size": 22637,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								17046,
-								17046
+								16448,
+								16448
 							]
 						],
 						"settings":
@@ -567,79 +558,37 @@
 								":sels:":
 								[
 									[
-										3794,
-										3794
+										12524,
+										12524
 									]
 								],
-								":visual_mode:": "visual",
-								"xpos": 4,
+								":visual_mode:": "visual_line",
+								"xpos": 39,
 								"xposa": null
 							}
 						},
 						"translation.x": 0.0,
-						"translation.y": 10321.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 3,
-					"type": "text"
-				},
-				{
-					"buffer": 1,
-					"file": "src/circuit.h",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 5857,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								2233,
-								2233
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"translate_tabs_to_spaces": false,
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										2193,
-										2193
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 58,
-								"xposa": null
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 1136.0,
+						"translation.y": 14323.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 1,
 					"type": "text"
 				},
 				{
-					"buffer": 2,
+					"buffer": 1,
 					"file": "src/board.c",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 12137,
+						"buffer_size": 12932,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								0,
-								0
+								7261,
+								7261
 							]
 						],
 						"settings":
@@ -648,100 +597,20 @@
 							"translate_tabs_to_spaces": false,
 							"vim":
 							{
-								"xpos": 0
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 5,
-					"type": "text"
-				},
-				{
-					"buffer": 3,
-					"file": "src/board.h",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 924,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								731,
-								731
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"vim":
-							{
 								":sels:":
 								[
 									[
-										587,
-										587
+										9173,
+										9173
 									]
 								],
 								":visual_mode:": "visual_line",
-								"xpos": 14
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 4,
-					"type": "text"
-				}
-			]
-		},
-		{
-			"selected": 0,
-			"sheets":
-			[
-				{
-					"buffer": 0,
-					"file": "src/circuit.c",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 21981,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								14353,
-								14353
-							]
-						],
-						"settings":
-						{
-							"highlight_line": true,
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"translate_tabs_to_spaces": false,
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										296,
-										296
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 0,
+								"xpos": 61,
 								"xposa": null
 							}
 						},
 						"translation.x": 0.0,
-						"translation.y": 11136.0,
+						"translation.y": 5491.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,
@@ -749,19 +618,19 @@
 				},
 				{
 					"buffer": 2,
-					"file": "src/board.c",
+					"file": "src/circuit.h",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 12137,
+						"buffer_size": 6199,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								4791,
-								4791
+								6199,
+								6199
 							]
 						],
 						"settings":
@@ -773,17 +642,17 @@
 								":sels:":
 								[
 									[
-										5595,
-										5595
+										1839,
+										1839
 									]
 								],
 								":visual_mode:": "visual",
-								"xpos": 13,
+								"xpos": 15,
 								"xposa": null
 							}
 						},
 						"translation.x": 0.0,
-						"translation.y": 2795.0,
+						"translation.y": 4500.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 2,
@@ -794,7 +663,7 @@
 	],
 	"incremental_find":
 	{
-		"height": 27.0
+		"height": 28.0
 	},
 	"input":
 	{
@@ -809,18 +678,11 @@
 				0,
 				1,
 				1
-			],
-			[
-				1,
-				0,
-				2,
-				1
 			]
 		],
 		"cols":
 		[
 			0.0,
-			0.5,
 			1.0
 		],
 		"rows":
@@ -852,6 +714,18 @@
 		"selected_items":
 		[
 			[
+				"board.c",
+				"Source\\board.c"
+			],
+			[
+				"circu",
+				"Source\\circuit.c"
+			],
+			[
+				"circui",
+				"Source\\circuit.c"
+			],
+			[
 				"circ",
 				"Source\\circuit.h"
 			],
@@ -862,18 +736,6 @@
 			[
 				"board",
 				"Source\\board.c"
-			],
-			[
-				"circui",
-				"Source\\circuit.c"
-			],
-			[
-				"board.c",
-				"Source\\board.c"
-			],
-			[
-				"circu",
-				"Source\\circuit.c"
 			],
 			[
 				"cic",
@@ -1548,24 +1410,102 @@
 		],
 		"width": 589.0
 	},
-	"selected_group": 1,
+	"selected_group": 0,
 	"settings":
 	{
 		"vim":
 		{
 			":command:":
 			[
-				"o",
+				"a",
 				"<:history:>",
 				"<Esc>"
 			],
 			":history:":
 			[
+				[
+					"insert",
+					{
+						"characters": " &&thin"
+					}
+				],
+				[
+					"left_delete",
+					null
+				],
+				[
+					"left_delete",
+					null
+				],
+				[
+					"left_delete",
+					null
+				],
+				[
+					"left_delete",
+					null
+				],
+				[
+					"insert",
+					{
+						"characters": " thing->type"
+					}
+				],
+				[
+					"insert",
+					{
+						"characters": " !="
+					}
+				],
+				[
+					"insert",
+					{
+						"characters": " THING_NO"
+					}
+				],
+				[
+					"insert_completion",
+					{
+						"completion": "THING_Node\tabc",
+						"snippet": "THING_Node",
+						"trigger": "THING_Node"
+					}
+				],
+				[
+					"left_delete",
+					null
+				],
+				[
+					"left_delete",
+					null
+				],
+				[
+					"left_delete",
+					null
+				],
+				[
+					"left_delete",
+					null
+				],
+				[
+					"insert",
+					{
+						"characters": "NUL"
+					}
+				],
+				[
+					"insert_completion",
+					{
+						"completion": "THING_Null\t(circuit.h)",
+						"snippet": "THING_Null",
+						"trigger": "THING_Null"
+					}
+				]
 			],
-			"alternate_view": 649,
+			"alternate_view": 36,
 			"last_search_pattern":
 			[
-				"DELAY"
+				"node_set_powere"
 			]
 		}
 	},

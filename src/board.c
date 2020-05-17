@@ -318,7 +318,13 @@ void board_delete()
 void board_place_node()
 {
 	Circuit* circ = board_get_edit_circuit();
-	Node* node = node_find(circ, board.cursor);
+
+	// Check if we're blocked...
+	Thing* thing = thing_find(circ, board.cursor, THING_All);
+	if (thing && thing->type != THING_Node)
+		return;
+
+	Node* node = (Node*)thing;
 
 	// No node, create one
 	if (!node)
@@ -355,51 +361,55 @@ void board_place_node()
 	}
 }
 
+void board_split_connection(Connection conn, Point pos)
+{
+	Circuit* circ = board_get_edit_circuit();
+	node_disconnect(circ, conn.a, conn.b);
+
+	// For a horizontal connection, add in-betweeny nodes
+	if (conn.a->pos.x != conn.b->pos.x)
+	{
+		Node* left_src;
+		Node* right_src;
+		if (conn.a->pos.x < conn.b->pos.x)
+		{
+			left_src = conn.a;
+			right_src = conn.b;
+		}
+		else
+		{
+			left_src = conn.b;
+			right_src = conn.a;
+		}
+
+		// Left in-betweeny
+		if (!node_find(circ, point_add(pos, point(-1, 0))))
+		{
+			Node* node = node_create(circ, point_add(pos, point(-1, 0)));
+			node_connect(circ, node, left_src);
+		}
+		// Righy betweeny
+		if (!node_find(circ, point_add(pos, point(1, 0))))
+		{
+			Node* node = node_create(circ, point_add(pos, point(1, 0)));
+			node_connect(circ, node, right_src);
+		}
+	}
+}
+
 void board_place_inverter()
 {
 	Circuit* circ = board_get_edit_circuit();
 	Point pos = board.cursor;
 
-	// Split connections if there are any
-	Connection conn = connection_find(circ, board.cursor);
-	if (conn.a)
-	{
-		node_disconnect(circ, conn.a, conn.b);
-
-		// For a horizontal connection, add in-betweeny nodes
-		if (conn.a->pos.x != conn.b->pos.x)
-		{
-			Node* left_src;
-			Node* right_src;
-			if (conn.a->pos.x < conn.b->pos.x)
-			{
-				left_src = conn.a;
-				right_src = conn.b;
-			}
-			else
-			{
-				left_src = conn.b;
-				right_src = conn.a;
-			}
-
-			// Left in-betweeny
-			if (!node_find(circ, point_add(pos, point(-1, 0))))
-			{
-				Node* node = node_create(circ, point_add(pos, point(-1, 0)));
-				node_connect(circ, node, left_src);
-			}
-			// Righy betweeny
-			if (!node_find(circ, point_add(pos, point(1, 0))))
-			{
-				Node* node = node_create(circ, point_add(pos, point(1, 0)));
-				node_connect(circ, node, right_src);
-			}
-		}
-	}
-
 	// We're blocked...
 	if (thing_find(circ, pos, THING_All))
 		return;
+
+	// Split connections if there are any
+	Connection conn = connection_find(circ, board.cursor);
+	if (conn.a)
+		board_split_connection(conn, board.cursor);
 
 	inverter_create(circ, pos);
 }
@@ -410,11 +420,30 @@ void board_place_comment()
 
 void board_place_chip()
 {
+	Circuit* circ = board_get_edit_circuit();
+	Point pos = board.cursor;
+
+	// We're blocked...
+	if (thing_find(circ, pos, THING_All))
+		return;
+
 	chip_create(board_get_edit_circuit(), board.cursor);
 }
 
 void board_place_delay()
 {
+	Circuit* circ = board_get_edit_circuit();
+	Point pos = board.cursor;
+
+	// We're blocked...
+	if (thing_find(circ, pos, THING_All))
+		return;
+
+	// Split connections if there are any
+	Connection conn = connection_find(circ, board.cursor);
+	if (conn.a)
+		board_split_connection(conn, pos);
+
 	delay_create(board_get_edit_circuit(), board.cursor);
 }
 
