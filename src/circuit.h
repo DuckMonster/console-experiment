@@ -35,11 +35,18 @@ enum Thing_Type
 	THING_All = ~0
 };
 
+enum Thing_Flags
+{
+	FLAG_Active = 1 << 0,
+	FLAG_Powered = 1 << 1,
+};
+
 #define THING_IMPL()\
 u32 generation;\
 u8 type;\
 bool valid;\
 bool dirty;\
+u8 flags;\
 u32 tic;\
 \
 Point pos;\
@@ -62,6 +69,13 @@ Thing_Id thing_id(Circuit* circ, Thing* thing);
 u32 things_find(Circuit* circ, Rect rect, Thing** out_arr, u32 arr_size);
 const char* thing_get_name(Thing* thing);
 Rect thing_get_bbox(Thing* thing);
+
+bool thing_flag_get(Thing* thing, u8 flag);
+void thing_flag_set(Thing* thing, u8 flag, bool value);
+inline bool thing_active(void* thing) { return thing_flag_get(thing, FLAG_Active); }
+inline void thing_set_active(void* thing, bool active) { thing_flag_set(thing, FLAG_Active, active); }
+inline bool thing_powered(void* thing) { return thing_flag_get(thing, FLAG_Powered); }
+inline void thing_set_powered(void* thing, bool powered) { thing_flag_set(thing, FLAG_Powered, powered); }
 
 bool _thing_it_inc(Circuit* circ, Thing** thing, u8 type_mask);
 
@@ -117,18 +131,10 @@ enum Node_Link_Type
 	LINK_Chip,
 };
 
-enum Node_Power_Mask
-{
-	POWER_Off = 0,
-	POWER_On = 1,
-	POWER_Powered = 2,
-};
-
 typedef struct
 {
 	THING_IMPL();
 
-	u8 state;
 	i32 recurse_id;
 
 	u8 link_type;
@@ -143,6 +149,7 @@ Node* node_get(Circuit* circ, Thing_Id id);
 Node* node_create(Circuit* circ, Point pos);
 void node_on_deleted(Circuit* circ, Node* node);
 void node_on_merge(Circuit* circ, Node* node, Node* other);
+void node_on_copy(Circuit* circ, Node* node, Node* other);
 
 void node_set_powered(Circuit* circ, Node* node, bool powered);
 
@@ -167,15 +174,12 @@ Connection connection_find(Circuit* circ, Point pos);
 typedef struct
 {
 	THING_IMPL();
-
-	bool active;
 } Inverter;
 
 Inverter* inverter_find(Circuit* circ, Point pos);
 Inverter* inverter_create(Circuit* circ, Point pos);
 void inverter_on_deleted(Circuit* circ, Inverter* inv);
 
-void inverter_on_dirty(Circuit* circ, Inverter* inv);
 void inverter_on_clean(Circuit* circ, Inverter* inv);
 
 /* CHIP */
@@ -206,8 +210,6 @@ bool chip_clean_up(Circuit* circ, Chip* chip);
 typedef struct
 {
 	THING_IMPL();
-
-	bool active;
 } Delay;
 
 Delay* delay_find(Circuit* circ, Point pos);
@@ -246,8 +248,5 @@ void circuit_shift(Circuit* circ, Point amount);
 
 void circuit_save(Circuit* circ, const char* path);
 void circuit_load(Circuit* circ, const char* path);
-
-bool circuit_get_public_state(Circuit* circ, u32 index);
-void circuit_set_public_state(Circuit* circ, u32 index, bool state);
 
 extern u32 tic;

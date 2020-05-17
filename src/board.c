@@ -158,7 +158,7 @@ void draw_circuit(Circuit* circ)
 				Node* node = (Node*)it;
 				cell_draw_off(node->pos, GLPH_NODE, CLR_RED_1, -1);
 
-				if (node->state)
+				if (thing_active(node))
 					cell_draw_off(node->pos, -1, CLR_RED_0, -1);
 				if (node->link_type == LINK_Public)
 					cell_draw_off(node->pos, -1, -1, CLR_ORNG_1);
@@ -174,7 +174,7 @@ void draw_circuit(Circuit* circ)
 					u8 direction = get_direction(node->pos, other->pos);
 					cell_or_off(node->pos, direction);
 
-					draw_connection(rect(node->pos, other->pos), node->state && other->state);
+					draw_connection(rect(node->pos, other->pos), node->flags & other->flags & FLAG_Active);
 				}
 				break;
 			}
@@ -185,7 +185,7 @@ void draw_circuit(Circuit* circ)
 				Inverter* inv = (Inverter*)it;
 
 				i32 color = CLR_RED_1;
-				if (inv->active)
+				if (thing_active(inv))
 					color = CLR_RED_0;
 
 				cell_draw_off(inv->pos, '>', color, -1);
@@ -210,7 +210,7 @@ void draw_circuit(Circuit* circ)
 			case THING_Delay:
 			{
 				Delay* delay = (Delay*)it;
-				i32 color = delay->active ? CLR_RED_0 : CLR_RED_1;
+				i32 color = thing_active(delay) ? CLR_RED_0 : CLR_RED_1;
 
 				cell_draw_off(delay->pos, 'o', color, -1);
 				break;

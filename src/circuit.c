@@ -9,7 +9,7 @@ Thing_Type_Data type_data[] =
 	// 1
 	{"Node", node_on_deleted, NULL, NULL, NULL, node_on_merge, NULL, node_on_clean, PUSH_Top},
 	// 2
-	{"Inverter", inverter_on_deleted, NULL, NULL, NULL, NULL, inverter_on_dirty, inverter_on_clean, PUSH_Top},
+	{"Inverter", inverter_on_deleted, NULL, NULL, NULL, NULL, NULL, inverter_on_clean, PUSH_Top},
 	{"NULL", NULL, NULL, NULL, NULL, NULL, NULL, NULL, PUSH_Top},
 	// 4
 	{"Chip", chip_on_deleted, chip_on_save, chip_on_load, chip_on_copy, NULL, NULL, NULL, PUSH_Top},
@@ -197,6 +197,19 @@ Rect thing_get_bbox(Thing* thing)
 	return rect(thing->pos, point_add(thing->pos, point_add(thing->size, point(-1, -1))));
 }
 
+bool thing_flag_get(Thing* thing, u8 flag)
+{
+	return !!(thing->flags & flag);
+}
+
+void thing_flag_set(Thing* thing, u8 flag, bool value)
+{
+	if (value)
+		thing->flags |= flag;
+	else
+		thing->flags &= ~flag;
+}
+
 // Dirty stack
 u32 tic = 1;
 u32 tic_push_count = 0;
@@ -345,20 +358,6 @@ void node_on_merge(Circuit* circ, Node* node, Node* other)
 	}
 }
 
-void node_set_powered(Circuit* circ, Node* node, bool powered)
-{
-	if (powered)
-	{
-		node->state |= POWER_Powered;
-	}
-	else
-	{
-		node->state &= ~POWER_Powered;
-	}
-
-	thing_set_dirty(circ, (Thing*)node);
-}
-
 void node_connect(Circuit* circ, Node* a, Node* b)
 {
 	assert(a != b);
@@ -433,7 +432,7 @@ bool node_batch_contains_power(Circuit* circ, Node* node, i32 recurse_id)
 	node->recurse_id = recurse_id;
 
 	// This node is powered!
-	if (node->state & POWER_Powered)
+	if (thing_powered(node))
 		return true;
 
 	// Otherwise, keep searching...
@@ -485,20 +484,13 @@ void node_batch_set_state(Circuit* circ, Node* node, bool active, i32 recurse_id
 		return;
 
 	// If the state will change, make output inverters as dirty!
-	if ((node->state & POWER_On) != active)
+	if (thing_active(node) != active)
 	{
 		thing_dirty_at(circ, point_add(node->pos, point(1, 0)));
 	}
 
 	node->recurse_id = recurse_id;
-	if (active)
-	{
-		node->state |= POWER_On;
-	}
-	else
-	{
-		node->state &= ~POWER_On;
-	}
+	thing_set_active(node, active);
 
 	// Spread the state
 	for(u32 i=0; i<4; ++i)
@@ -625,38 +617,35 @@ void inverter_on_deleted(Circuit* circ, Inverter* inv)
 	inv->valid = false;
 
 	// If there is a target-node to this inverter, update it
-	Node* node = node_find(circ, point_add(inv->pos, point(1, 0)));
-	if (node)
-		node_set_powered(circ, node, false);
-}
-
-void inverter_on_dirty(Circuit* circ, Inverter* inv)
-{
+	Thing* target = thing_find(circ, point_add(inv->pos, point(1, 0)), THING_All);
+	if (target)
+	{
+		thing_set_powered(target, false);
+		thing_set_dirty(circ, target);
+	}
 }
 
 void inverter_on_clean(Circuit* circ, Inverter* inv)
 {
-	bool prev_active = inv->active;
+	bool prev_active = thing_active(inv);
+	bool new_active = prev_active;
 
 	// Update state
-	Node* src_node = node_find(circ, point_add(inv->pos, point(-1, 0)));
-	if (src_node)
-	{
-		inv->active = !src_node->state;
-	}
+	Thing* src = thing_find(circ, point_add(inv->pos, point(-1, 0)), THING_All);
+	if (src)
+		new_active = !thing_active(src);
 	else
-	{
-		inv->active = true;
-	}
+		new_active = true;
 
-	Node* tar_node = node_find(circ, point_add(inv->pos, point(1, 0)));
-	if (tar_node)
+	thing_set_active(inv, new_active);
+	if (new_active != prev_active)
 	{
-		bool tar_node_powered = !!(tar_node->state & POWER_Powered);
-
-		// Did our state change?
-		if (inv->active != tar_node_powered)
-			node_set_powered(circ, tar_node, inv->active);
+		Thing* target = thing_find(circ, point_add(inv->pos, point(1, 0)), THING_All);
+		if (target)
+		{
+			thing_set_powered(target, new_active);
+			thing_set_dirty(circ, target);
+		}
 	}
 }
 
@@ -776,24 +765,35 @@ Delay* delay_create(Circuit* circ, Point pos)
 }
 void delay_on_deleted(Circuit* circ, Delay* delay)
 {
-
+	// If there is a target-node to this delay, update it
+	Thing* target = thing_find(circ, point_add(delay->pos, point(1, 0)), THING_All);
+	if (target)
+	{
+		thing_set_powered(target, false);
+		thing_set_dirty(circ, target);
+	}
 }
 void delay_on_clean(Circuit* circ, Delay* delay)
 {
-	bool prev_active = delay->active;
+	bool prev_active = thing_active(delay);
+	bool new_active = prev_active;
 
 	// Update state
-	Node* src_node = node_find(circ, point_add(delay->pos, point(-1, 0)));
-	delay->active = src_node ? src_node->state : false;
+	Thing* src = thing_find(circ, point_add(delay->pos, point(-1, 0)), THING_All);
+	if (src)
+		new_active = thing_active(src);
+	else
+		new_active = false;
 
-	Node* tar_node = node_find(circ, point_add(delay->pos, point(1, 0)));
-	if (tar_node)
+	thing_set_active(delay, new_active);
+	if (new_active != prev_active)
 	{
-		bool tar_node_powered = !!(tar_node->state & POWER_Powered);
-
-		// Did our state change?
-		if (delay->active != tar_node_powered)
-			node_set_powered(circ, tar_node, delay->active);
+		Thing* target = thing_find(circ, point_add(delay->pos, point(1, 0)), THING_All);
+		if (target)
+		{
+			thing_set_powered(target, new_active);
+			thing_set_dirty(circ, target);
+		}
 	}
 }
 
@@ -1041,30 +1041,4 @@ void circuit_load(Circuit* circ, const char* path)
 	fclose(file);
 
 	log("Loaded '%s'; %d bytes read", path, bytes_read);
-}
-
-bool circuit_get_public_state(Circuit* circ, u32 index)
-{
-	Node* node = node_get(circ, circ->public_nodes[index]);
-	if (!node)
-		return false;
-
-	bool was_powered = node->state & POWER_Powered;
-	node->state &= ~POWER_Powered;
-
-	bool state = node_batch_contains_power(circ, node, -1);
-
-	if (was_powered)
-		node->state |= POWER_Powered;
-
-	return state;
-}
-
-void circuit_set_public_state(Circuit* circ, u32 index, bool state)
-{
-	Node* node = node_get(circ, circ->public_nodes[index]);
-	if (!node)
-		return;
-
-	node_set_powered(circ, node, state);
 }
