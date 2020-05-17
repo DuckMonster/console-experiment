@@ -10,7 +10,7 @@ int main()
 {
 	_chdir("..\\..");
 
-	context_open("Console Game", 100, 100, CELL_WIDTH * CELL_COLS * 2, CELL_HEIGHT * CELL_ROWS * 2);
+	context_open("Console Game", 100, 100, CELL_COLS, CELL_ROWS);
 	cells_init();
 	board_init();
 

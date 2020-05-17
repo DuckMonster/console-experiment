@@ -54,19 +54,32 @@ typedef struct
 	u16 height;
 } Win_Size_Params;
 
-void convert_client_to_wnd_size(u32* width, u32* height)
+Point client_to_wnd_delta()
 {
-	RECT client_rect;
-	client_rect.left = 0;
-	client_rect.top = 0;
-	client_rect.right = *width;
-	client_rect.bottom = *height;
-	bool result = AdjustWindowRect(&client_rect, window_style, false);
-	if (!result)
-		return;
+	RECT cli_rect;
+	cli_rect.left = 0;
+	cli_rect.top= 0;
+	cli_rect.right = 0;
+	cli_rect.bottom = 0;
 
-	*width = client_rect.right - client_rect.left;
-	*height = client_rect.bottom - client_rect.top;
+	AdjustWindowRect(&cli_rect, window_style, false);
+	return point(cli_rect.right - cli_rect.left, cli_rect.bottom - cli_rect.top);
+}
+
+void client_to_wnd_size(u32* width, u32* height)
+{
+	Point delta = client_to_wnd_delta();
+
+	*width += delta.x;
+	*height += delta.y;
+}
+
+void wnd_to_client_size(u32* width, u32* height)
+{
+	Point delta = client_to_wnd_delta();
+
+	*width -= delta.x;
+	*height -= delta.y;
 }
 
 LRESULT CALLBACK wnd_proc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -113,17 +126,21 @@ LRESULT CALLBACK wnd_proc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		{
 			RECT* size_rect = (RECT*)lparam;
 
-			// Constrain the sizes...
 			u32 unit_width = CELL_WIDTH * window_scale;
 			u32 unit_height = CELL_HEIGHT * window_scale;
 
 			u32 width = size_rect->right - size_rect->left;
 			u32 height = size_rect->bottom - size_rect->top;
+
+			// Convert to client-space
+			wnd_to_client_size(&width, &height);
+
+			// Constrain
 			width = (u32)((width / unit_width) * unit_width);
 			height = (u32)((height / unit_height) * unit_height);
 
-			// Translate sizes to window-space
-			convert_client_to_wnd_size(&width, &height);
+			// Convert back to window-space
+			client_to_wnd_size(&width, &height);
 
 			// And adjust the size rect!
 			size_rect->right = size_rect->left + width;
@@ -135,9 +152,9 @@ LRESULT CALLBACK wnd_proc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		case WM_SIZE:
 		{
 			Win_Size_Params* size = (Win_Size_Params*)&lparam;
-			context.width = size->width;
-			context.height = size->height;
-			glViewport(0, 0, context.width, context.height);
+			context.width = size->width / (CELL_WIDTH * window_scale);
+			context.height = size->height / (CELL_HEIGHT * window_scale);
+			glViewport(0, 0, size->width, size->height);
 
 			break;
 		}
@@ -188,24 +205,21 @@ void context_open(const char* title, i32 x, i32 y, u32 width, u32 height)
 	}
 
 	// Calculate window-size so that the client has the specified size
-	RECT client_rect;
-	client_rect.left = 0;
-	client_rect.top = 0;
-	client_rect.right = width;
-	client_rect.bottom = height;
-	bool result = AdjustWindowRect(&client_rect, window_style, false);
+	u32 wnd_width = width * CELL_WIDTH * window_scale;
+	u32 wnd_height = height * CELL_HEIGHT * window_scale;
+	client_to_wnd_size(&wnd_width, &wnd_height);
 
 	context.x = x;
 	context.y = y;
-	context.width = client_rect.right - client_rect.left;
-	context.height = client_rect.bottom - client_rect.top;
+	context.width = width;
+	context.height = height;
 
 	// Open window!
 	wnd_handle = CreateWindow(
 		class_name,
 		title,
 		window_style,
-		context.x, context.y, context.width, context.height,
+		context.x, context.y, wnd_width, wnd_height,
 		0, 0,
 		instance,
 		0
