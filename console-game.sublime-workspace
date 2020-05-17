@@ -4,6 +4,62 @@
 		"selected_items":
 		[
 			[
+				"conn",
+				"connections\tabc"
+			],
+			[
+				"CLR_Bl",
+				"CLR_BLUE_0\tabc"
+			],
+			[
+				"stak",
+				"stack_index\tabc"
+			],
+			[
+				"diry",
+				"dirty_stacks\t(circuit.h)"
+			],
+			[
+				"board_togg",
+				"board_toggle_input\tabc"
+			],
+			[
+				"mod",
+				"key_mod_flags"
+			],
+			[
+				"recurs",
+				"recurse_id\tabc"
+			],
+			[
+				"node_inva",
+				"node_invalidate_pre\tabc"
+			],
+			[
+				"node_di",
+				"node_make_dirty\tabc"
+			],
+			[
+				"point_in",
+				"point_in_rect\t(board.c)"
+			],
+			[
+				"last",
+				"node_last"
+			],
+			[
+				"connect",
+				"connect_node\tabc"
+			],
+			[
+				"connec",
+				"connect_node\tabc"
+			],
+			[
+				"curso",
+				"cursor_y\tabc"
+			],
+			[
 				"glGetProg",
 				"glGetProgramInfoLog\t(GL.h)"
 			],
@@ -124,123 +180,37 @@
 	"buffers":
 	[
 		{
-			"file": "src/cells.c",
+			"file": "src/circuit.c",
 			"settings":
 			{
-				"buffer_size": 3932,
+				"buffer_size": 21981,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
 		},
 		{
-			"file": "src/cells.h",
+			"file": "src/circuit.h",
 			"settings":
 			{
-				"buffer_size": 267,
+				"buffer_size": 5857,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
 		},
 		{
-			"file": "src/import.c",
+			"file": "src/board.c",
 			"settings":
 			{
-				"buffer_size": 2030,
+				"buffer_size": 12137,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
 		},
 		{
-			"file": "src/import.h",
+			"file": "src/board.h",
 			"settings":
 			{
-				"buffer_size": 230,
-				"encoding": "UTF-8",
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "src/gl_bind.c",
-			"settings":
-			{
-				"buffer_size": 3277,
-				"encoding": "UTF-8",
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "src/gl_bind.h",
-			"settings":
-			{
-				"buffer_size": 3205,
-				"encoding": "UTF-8",
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "src/context.c",
-			"settings":
-			{
-				"buffer_size": 4361,
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "include/GL/glext.h",
-			"settings":
-			{
-				"buffer_size": 841944,
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "/D/Prog/c-engine/src/Engine/Graphics/Texture.cpp",
-			"settings":
-			{
-				"buffer_size": 4559,
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "res/tiles.vert",
-			"settings":
-			{
-				"buffer_size": 581,
-				"encoding": "UTF-8",
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "res/tiles.frag",
-			"settings":
-			{
-				"buffer_size": 175,
-				"encoding": "UTF-8",
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "src/main.c",
-			"settings":
-			{
-				"buffer_size": 444,
-				"encoding": "UTF-8",
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "/D/Prog/c-engine/src/Core/OS/File.cpp",
-			"settings":
-			{
-				"buffer_size": 1491,
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "src/mem.h",
-			"settings":
-			{
-				"buffer_size": 64,
+				"buffer_size": 924,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
 			}
@@ -389,6 +359,29 @@
 	],
 	"file_history":
 	[
+		"/C/Prog/console-game/src/circuit.h",
+		"/C/Prog/console-game/src/board.c",
+		"/C/Prog/console-game/src/circuit.c",
+		"/C/Prog/console-game/src/board.h",
+		"/C/Prog/console-game/src/types.h",
+		"/C/Prog/console-game/src/types.c",
+		"/C/Prog/console-game/src/cells.h",
+		"/C/Prog/console-game/src/prompt.c",
+		"/C/Prog/console-game/src/prompt.h",
+		"/C/Prog/console-game/src/cells.c",
+		"/C/Prog/console-game/src/context.h",
+		"/C/Prog/console-game/src/context.c",
+		"/C/Prog/console-game/src/mem.h",
+		"/C/Prog/console-game/src/main.c",
+		"/C/Prog/console-game/src/import.c",
+		"/C/Prog/console-game/src/import.h",
+		"/C/Prog/console-game/src/gl_bind.c",
+		"/C/Prog/console-game/src/gl_bind.h",
+		"/C/Prog/console-game/include/GL/glext.h",
+		"/C/Prog/console-game/res/tiles.vert",
+		"/C/Prog/console-game/res/tiles.frag",
+		"/D/Prog/c-engine/src/Core/OS/File.cpp",
+		"/D/Prog/c-engine/src/Engine/Graphics/Texture.cpp",
 		"/D/Prog/console-experiment/src/main.c",
 		"/D/Prog/console-experiment/src/context.c",
 		"/D/Prog/console-experiment/src/import.h",
@@ -493,34 +486,11 @@
 		"/C/Prog/c-engine/engine.vcxproj",
 		"/C/Prog/c-engine/src/Runtime/main.cpp",
 		"/C/Prog/c-engine/src/Engine/Collision/HitTest.cpp",
-		"/C/Prog/c-engine/src/Runtime/Weapon/Weapon.h",
-		"/C/Prog/c-engine/src/Engine/Collision/CollisionTypes.cpp",
-		"/C/Prog/c-engine/src/Runtime/Mobs/Mob.cpp",
-		"/C/Prog/c-engine/res/Shader/Environment/grass.frag",
-		"/C/Prog/c-engine/src/Runtime/Game/ThingArray.h",
-		"/C/Prog/c-engine/src/Runtime/Game/HandleTypes.h",
-		"/C/Prog/c-engine/src/Engine/Graphics/SpriteSheet.h",
-		"/C/Prog/c-engine/src/Runtime/Game/Camera.h",
-		"/C/Prog/c-engine/src/Core/Math/Vector.h",
-		"/C/Prog/c-engine/res/Sprite/unit_sheet.dat",
-		"/C/Prog/c-engine/src/Runtime/Player/PlayerShooting.h",
-		"/C/Prog/c-engine/src/Runtime/Render/Billboard.cpp",
-		"/C/Prog/c-engine/src/Runtime/Render/Billboard.h",
-		"/C/Prog/c-engine/src/Core/Container/StringBuilder.cpp",
-		"/C/Prog/c-engine/src/Core/Container/StringBuilder.h",
-		"/C/Prog/c-engine/src/Runtime/Fx/FxParams.h",
-		"/C/Prog/c-engine/src/Runtime/Weapon/WeaponType.h",
-		"/C/Prog/c-engine/src/Runtime/Fx/Fx.cpp",
-		"/C/Prog/c-engine/res/Fx/muzzle_flash.dat",
-		"/C/Prog/c-engine/src/Core/Import/Dat.cpp",
-		"/C/Prog/c-engine/src/Core/Import/Dat.h",
-		"/C/Prog/c-engine/res/Weapon/shotgun.dat",
-		"/C/Prog/c-engine/res/Weapon/assault_rifle.dat",
-		"/C/Prog/c-engine/res/Weapon/pistol.dat"
+		"/C/Prog/c-engine/src/Runtime/Weapon/Weapon.h"
 	],
 	"find":
 	{
-		"height": 28.0
+		"height": 27.0
 	},
 	"find_in_files":
 	{
@@ -534,6 +504,9 @@
 		"case_sensitive": true,
 		"find_history":
 		[
+			"node_power_source_count",
+			"power",
+			"state",
 			"CELLMAP_HEIGHT",
 			"CELLMAP_WIDTH",
 			"ptr",
@@ -547,6 +520,8 @@
 		"regex": false,
 		"replace_history":
 		[
+			"node_count_power_sources",
+			"active",
 			"CELL_ROWS",
 			"CELL_COLS",
 			"vert_ptr",
@@ -556,88 +531,124 @@
 		"reverse": false,
 		"show_context": true,
 		"use_buffer2": true,
-		"whole_word": false,
+		"whole_word": true,
 		"wrap": true
 	},
 	"groups":
 	[
 		{
-			"selected": 0,
+			"selected": 1,
 			"sheets":
 			[
 				{
 					"buffer": 0,
-					"file": "src/cells.c",
+					"file": "src/circuit.c",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 3932,
+						"buffer_size": 21981,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								1701,
-								1701
+								17046,
+								17046
 							]
 						],
 						"settings":
 						{
+							"highlight_line": true,
 							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
+							"translate_tabs_to_spaces": false,
 							"vim":
 							{
 								":sels:":
 								[
 									[
-										1674,
-										1674
+										3794,
+										3794
 									]
 								],
-								":visual_mode:": "visual_line",
-								"xpos": 30,
+								":visual_mode:": "visual",
+								"xpos": 4,
 								"xposa": null
 							}
 						},
 						"translation.x": 0.0,
-						"translation.y": 811.0,
+						"translation.y": 10321.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "src/circuit.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 5857,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2233,
+								2233
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
+							"translate_tabs_to_spaces": false,
+							"vim":
+							{
+								":sels:":
+								[
+									[
+										2193,
+										2193
+									]
+								],
+								":visual_mode:": "visual",
+								"xpos": 58,
+								"xposa": null
+							}
+						},
+						"translation.x": 0.0,
+						"translation.y": 1136.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 1,
 					"type": "text"
 				},
 				{
-					"buffer": 1,
-					"file": "src/cells.h",
+					"buffer": 2,
+					"file": "src/board.c",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 267,
+						"buffer_size": 12137,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								177,
-								177
+								0,
+								0
 							]
 						],
 						"settings":
 						{
 							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
+							"translate_tabs_to_spaces": false,
 							"vim":
 							{
-								":sels:":
-								[
-									[
-										99,
-										99
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 19,
-								"xposa": null
+								"xpos": 0
 							}
 						},
 						"translation.x": 0.0,
@@ -648,62 +659,20 @@
 					"type": "text"
 				},
 				{
-					"buffer": 2,
-					"file": "src/import.c",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 2030,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								1844,
-								1844
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"translate_tabs_to_spaces": false,
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										1632,
-										1632
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 28,
-								"xposa": null
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 1143.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 19,
-					"type": "text"
-				},
-				{
 					"buffer": 3,
-					"file": "src/import.h",
+					"file": "src/board.h",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 230,
+						"buffer_size": 924,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								228,
-								228
+								731,
+								731
 							]
 						],
 						"settings":
@@ -714,622 +683,12 @@
 								":sels:":
 								[
 									[
-										228,
-										228
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 53,
-								"xposa": null
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 18,
-					"type": "text"
-				},
-				{
-					"buffer": 4,
-					"file": "src/gl_bind.c",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 3277,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								600,
-								600
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"translate_tabs_to_spaces": false,
-							"vim":
-							{
-								"xpos": 29
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 16,
-					"type": "text"
-				},
-				{
-					"buffer": 5,
-					"file": "src/gl_bind.h",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 3205,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								522,
-								522
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										2252,
-										2252
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 0,
-								"xposa": null
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 141.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 14,
-					"type": "text"
-				},
-				{
-					"buffer": 6,
-					"file": "src/context.c",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 4361,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								1906,
-								1906
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"translate_tabs_to_spaces": false,
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										2553,
-										2553
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 29,
-								"xposa": null
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 1566.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 7,
-					"type": "text"
-				},
-				{
-					"buffer": 7,
-					"file": "include/GL/glext.h",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 841944,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								77722,
-								77722
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"vim":
-							{
-								"xpos": 119
-							}
-						},
-						"translation.x": 105.0,
-						"translation.y": 22509.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 15,
-					"type": "text"
-				},
-				{
-					"buffer": 8,
-					"file": "/D/Prog/c-engine/src/Engine/Graphics/Texture.cpp",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 4559,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								623,
-								623
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"translate_tabs_to_spaces": false,
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										1159,
-										1149
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 0,
-								"xposa": null
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 21,
-					"type": "text"
-				},
-				{
-					"buffer": 9,
-					"file": "res/tiles.vert",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 581,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								567,
-								567
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/OpenGL Shading Language (GLSL)/GLSL.sublime-syntax",
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										580,
-										580
+										587,
+										587
 									]
 								],
 								":visual_mode:": "visual_line",
-								"xpos": 1,
-								"xposa": null
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 9,
-					"type": "text"
-				},
-				{
-					"buffer": 0,
-					"file": "src/cells.c",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 3932,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								3539,
-								3539
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										2043,
-										2043
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 8,
-								"xposa": null
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 1509.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 6,
-					"type": "text"
-				},
-				{
-					"buffer": 1,
-					"file": "src/cells.h",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 267,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								47,
-								47
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										62,
-										62
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 6,
-								"xposa": null
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 8,
-					"type": "text"
-				},
-				{
-					"buffer": 10,
-					"file": "res/tiles.frag",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 175,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								175,
-								175
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/OpenGL Shading Language (GLSL)/GLSL.sublime-syntax",
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										190,
-										190
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 1,
-								"xposa": null
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 11,
-					"type": "text"
-				},
-				{
-					"buffer": 11,
-					"file": "src/main.c",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 444,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								17,
-								17
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"translate_tabs_to_spaces": false,
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										222,
-										222
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 17,
-								"xposa": null
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 17,
-					"type": "text"
-				},
-				{
-					"buffer": 12,
-					"file": "/D/Prog/c-engine/src/Core/OS/File.cpp",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 1491,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								454,
-								454
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"translate_tabs_to_spaces": false,
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										310,
-										310
-									]
-								],
-								":visual_mode:": "visual_line",
-								"xpos": 0
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 20,
-					"type": "text"
-				},
-				{
-					"buffer": 0,
-					"file": "src/cells.c",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 3932,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								3498,
-								3498
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										1528,
-										1528
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 0,
-								"xposa": null
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 1881.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 12,
-					"type": "text"
-				},
-				{
-					"buffer": 11,
-					"file": "src/main.c",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 444,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								259,
-								259
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"translate_tabs_to_spaces": false,
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										250,
-										250
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 0,
-								"xposa": null
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 10,
-					"type": "text"
-				},
-				{
-					"buffer": 1,
-					"file": "src/cells.h",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 267,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								11,
-								11
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										62,
-										62
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 11,
-								"xposa": null
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 13,
-					"type": "text"
-				}
-			]
-		},
-		{
-			"selected": 0,
-			"sheets":
-			[
-				{
-					"buffer": 11,
-					"file": "src/main.c",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 444,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								257,
-								257
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"translate_tabs_to_spaces": false,
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										222,
-										222
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 16,
-								"xposa": null
+								"xpos": 14
 							}
 						},
 						"translation.x": 0.0,
@@ -1342,24 +701,67 @@
 			]
 		},
 		{
-			"selected": 2,
+			"selected": 0,
 			"sheets":
 			[
 				{
-					"buffer": 2,
-					"file": "src/import.c",
+					"buffer": 0,
+					"file": "src/circuit.c",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 2030,
+						"buffer_size": 21981,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								0,
-								0
+								14353,
+								14353
+							]
+						],
+						"settings":
+						{
+							"highlight_line": true,
+							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
+							"translate_tabs_to_spaces": false,
+							"vim":
+							{
+								":sels:":
+								[
+									[
+										296,
+										296
+									]
+								],
+								":visual_mode:": "visual",
+								"xpos": 0,
+								"xposa": null
+							}
+						},
+						"translation.x": 0.0,
+						"translation.y": 11136.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "src/board.c",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 12137,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								4791,
+								4791
 							]
 						],
 						"settings":
@@ -1371,93 +773,20 @@
 								":sels:":
 								[
 									[
-										1632,
-										1632
+										5595,
+										5595
 									]
 								],
 								":visual_mode:": "visual",
-								"xpos": 0,
+								"xpos": 13,
 								"xposa": null
 							}
 						},
 						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 3,
-					"type": "text"
-				},
-				{
-					"buffer": 3,
-					"file": "src/import.h",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 230,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								0,
-								0
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"vim":
-							{
-								":sels:":
-								[
-									[
-										228,
-										228
-									]
-								],
-								":visual_mode:": "visual",
-								"xpos": 0,
-								"xposa": null
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
+						"translation.y": 2795.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 2,
-					"type": "text"
-				},
-				{
-					"buffer": 13,
-					"file": "src/mem.h",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 64,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								63,
-								63
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/User/C++ (Emil).sublime-syntax",
-							"vim":
-							{
-								"xpos": 49
-							}
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 0,
 					"type": "text"
 				}
 			]
@@ -1465,7 +794,7 @@
 	],
 	"incremental_find":
 	{
-		"height": 28.0
+		"height": 27.0
 	},
 	"input":
 	{
@@ -1479,19 +808,13 @@
 				0,
 				0,
 				1,
-				2
+				1
 			],
 			[
 				1,
 				0,
 				2,
 				1
-			],
-			[
-				1,
-				1,
-				2,
-				2
 			]
 		],
 		"cols":
@@ -1503,7 +826,6 @@
 		"rows":
 		[
 			0.0,
-			0.5,
 			1.0
 		]
 	},
@@ -1514,13 +836,13 @@
 	},
 	"output.find_results":
 	{
-		"height": 0.0
+		"height": 132.0
 	},
 	"pinned_build_system": "",
 	"project": "console-game.sublime-project",
 	"replace":
 	{
-		"height": 106.0
+		"height": 108.0
 	},
 	"save_all_on_build": true,
 	"select_file":
@@ -1530,6 +852,174 @@
 		"selected_items":
 		[
 			[
+				"circ",
+				"Source\\circuit.h"
+			],
+			[
+				"board.",
+				"Source\\board.c"
+			],
+			[
+				"board",
+				"Source\\board.c"
+			],
+			[
+				"circui",
+				"Source\\circuit.c"
+			],
+			[
+				"board.c",
+				"Source\\board.c"
+			],
+			[
+				"circu",
+				"Source\\circuit.c"
+			],
+			[
+				"cic",
+				"Source\\circuit.c"
+			],
+			[
+				"boar.",
+				"Source\\board.c"
+			],
+			[
+				"circuit.c",
+				"Source\\circuit.c"
+			],
+			[
+				"circuit",
+				"Source\\circuit.h"
+			],
+			[
+				"board.h",
+				"Source\\board.h"
+			],
+			[
+				"boar",
+				"Source\\board.c"
+			],
+			[
+				"cirui",
+				"Source\\circuit.h"
+			],
+			[
+				"types",
+				"Source\\types.h"
+			],
+			[
+				"type",
+				"Source\\types.h"
+			],
+			[
+				"cirtu",
+				"Source\\circuit.h"
+			],
+			[
+				"ci",
+				"Source\\circuit.c"
+			],
+			[
+				"cells",
+				"Source\\cells.h"
+			],
+			[
+				"promp",
+				"Source\\prompt.h"
+			],
+			[
+				"cell",
+				"Source\\cells.h"
+			],
+			[
+				"cellh",
+				"Source\\cells.h"
+			],
+			[
+				"",
+				"Source\\circuit.h"
+			],
+			[
+				"conte",
+				"Source\\context.h"
+			],
+			[
+				"cell.h",
+				"Source\\cells.h"
+			],
+			[
+				"boar.d",
+				"Source\\board.c"
+			],
+			[
+				"cirt",
+				"Source\\circuit.h"
+			],
+			[
+				"boar.c",
+				"Source\\board.c"
+			],
+			[
+				"mem",
+				"Source\\mem.h"
+			],
+			[
+				"boardc.",
+				"Source\\board.c"
+			],
+			[
+				"main",
+				"Source\\main.c"
+			],
+			[
+				"cir",
+				"Source\\circuit.c"
+			],
+			[
+				"cric",
+				"Source\\circuit.h"
+			],
+			[
+				"boad.c",
+				"Source\\board.c"
+			],
+			[
+				"typ",
+				"Source\\types.h"
+			],
+			[
+				"cell.c",
+				"Source\\cells.c"
+			],
+			[
+				"ciru",
+				"Source\\circuit.c"
+			],
+			[
+				"boarc",
+				"Source\\board.c"
+			],
+			[
+				"types.",
+				"Source\\types.h"
+			],
+			[
+				"con",
+				"Source\\context.c"
+			],
+			[
+				"context",
+				"Source\\context.c"
+			],
+			[
+				"cells.c",
+				"Source\\cells.c"
+			],
+			[
+				"cell.",
+				"Source\\cells.h"
+			],
+			[
 				"import",
 				"Source\\import.h"
 			],
@@ -1538,24 +1028,12 @@
 				"Source\\import.c"
 			],
 			[
-				"main",
-				"Source\\main.c"
-			],
-			[
 				"ccells.c",
 				"Source\\cells.c"
 			],
 			[
-				"conte",
-				"Source\\context.c"
-			],
-			[
 				"gl_bi",
 				"Source\\gl_bind.c"
-			],
-			[
-				"cell",
-				"Source\\cells.c"
 			],
 			[
 				"impo",
@@ -1600,14 +1078,6 @@
 			[
 				"gl_bin",
 				"Source\\gl_bind.c"
-			],
-			[
-				"context",
-				"Source\\context.h"
-			],
-			[
-				"type",
-				"Source\\types.h"
 			],
 			[
 				"deu",
@@ -1668,10 +1138,6 @@
 			[
 				"cell.cp",
 				"Source\\Runtime\\MapGen\\Cell.cpp"
-			],
-			[
-				"cell.h",
-				"Source\\Runtime\\MapGen\\Cell.h"
 			],
 			[
 				"colorh",
@@ -1778,10 +1244,6 @@
 				"Source\\Core\\Memory\\Arena.h"
 			],
 			[
-				"mem",
-				"Source\\Core\\Memory\\Mem.h"
-			],
-			[
 				"arena.cp",
 				"Source\\Core\\Memory\\Arena.cpp"
 			],
@@ -1800,10 +1262,6 @@
 			[
 				"edito",
 				"Source\\Runtime\\Editor\\Editor.cpp"
-			],
-			[
-				"cell.c",
-				"Source\\Runtime\\MapGen\\Cell.cpp"
 			],
 			[
 				"game.cpp",
@@ -1904,142 +1362,6 @@
 			[
 				"player.cpp",
 				"Source\\Runtime\\Player\\Player.cpp"
-			],
-			[
-				"game.cp",
-				"Source\\Runtime\\Game\\Game.cpp"
-			],
-			[
-				"mob.cp",
-				"Source\\Runtime\\Mobs\\Mob.cpp"
-			],
-			[
-				"unit.cp",
-				"Source\\Runtime\\Unit\\Unit.cpp"
-			],
-			[
-				"unit_sh",
-				"Resources\\Sprite\\unit_sheet.dat"
-			],
-			[
-				"camera.h",
-				"Source\\Runtime\\Game\\Camera.h"
-			],
-			[
-				"playershoot",
-				"Source\\Runtime\\Player\\PlayerShooting.h"
-			],
-			[
-				"billboard.cp",
-				"Source\\Runtime\\Render\\Billboard.cpp"
-			],
-			[
-				"unit_",
-				"Resources\\Sprite\\unit_sheet.dat"
-			],
-			[
-				"spritesh",
-				"Source\\Engine\\Graphics\\SpriteSheet.h"
-			],
-			[
-				"math.h",
-				"Source\\Core\\Math\\Math.h"
-			],
-			[
-				"billboard.cpp",
-				"Source\\Runtime\\Render\\Billboard.cpp"
-			],
-			[
-				"spriteshe",
-				"Source\\Engine\\Graphics\\SpriteSheet.h"
-			],
-			[
-				"stringbui",
-				"Source\\Core\\Container\\StringBuilder.cpp"
-			],
-			[
-				"stringbu",
-				"Source\\Core\\Container\\StringBuilder.cpp"
-			],
-			[
-				"dat.cpp",
-				"Source\\Core\\Import\\Dat.cpp"
-			],
-			[
-				"memh",
-				"Source\\Core\\Memory\\Mem.h"
-			],
-			[
-				"dat.h",
-				"Source\\Core\\Import\\Dat.h"
-			],
-			[
-				"bilbo",
-				"Source\\Runtime\\Render\\Billboard.h"
-			],
-			[
-				"sheet.da",
-				"Resources\\Sprite\\unit_sheet.dat"
-			],
-			[
-				"fx.cpp",
-				"Source\\Runtime\\Fx\\Fx.cpp"
-			],
-			[
-				"weapontyp",
-				"Source\\Runtime\\Weapon\\WeaponType.h"
-			],
-			[
-				"fxpara",
-				"Source\\Runtime\\Fx\\FxParams.h"
-			],
-			[
-				"fxspik",
-				"Source\\Runtime\\Fx\\FxSpike.cpp"
-			],
-			[
-				"weapon.cp",
-				"Source\\Runtime\\Weapon\\Weapon.cpp"
-			],
-			[
-				"muzzle",
-				"Resources\\Fx\\muzzle_flash.dat"
-			],
-			[
-				"weapon.cpp",
-				"Source\\Runtime\\Weapon\\Weapon.cpp"
-			],
-			[
-				"assual",
-				"Resources\\Weapon\\assault_rifle.dat"
-			],
-			[
-				"shotgun",
-				"Resources\\Weapon\\shotgun.dat"
-			],
-			[
-				"weapon",
-				"Source\\Runtime\\Weapon\\WeaponType.h"
-			],
-			[
-				"pistol",
-				"Resources\\Weapon\\pistol.dat"
-			],
-			[
-				"gmae.cp",
-				"Source\\Runtime\\Game\\Game.cpp"
-			],
-			[
-				"spike.",
-				"Source\\Runtime\\Fx\\FxSpike.h"
-			],
-			[
-				"quat.",
-				"Source\\Core\\Math\\Quaternion.h"
-			],
-			[
-				"pistolda",
-				"Resources\\Weapon\\pistol.dat"
 			]
 		],
 		"width": 0.0
@@ -2055,10 +1377,26 @@
 	},
 	"select_symbol":
 	{
-		"height": 386.0,
-		"last_filter": "",
+		"height": 76.0,
+		"last_filter": "thing_get_na",
 		"selected_items":
 		[
+			[
+				"thing_get_na",
+				"thing_get_name"
+			],
+			[
+				"node_id",
+				"node_id"
+			],
+			[
+				"inverter",
+				"inverter_create"
+			],
+			[
+				"inverter_cr",
+				"inverter_create"
+			],
 			[
 				"glVertexAttribIPtr",
 				"glVertexAttribIPointer"
@@ -2208,9 +1546,9 @@
 				"scene_draw_point"
 			]
 		],
-		"width": 600.0
+		"width": 589.0
 	},
-	"selected_group": 2,
+	"selected_group": 1,
 	"settings":
 	{
 		"vim":
@@ -2223,136 +1561,11 @@
 			],
 			":history:":
 			[
-				[
-					"insert",
-					{
-						"characters": "\n#define"
-					}
-				],
-				[
-					"insert",
-					{
-						"characters": " me_"
-					}
-				],
-				[
-					"left_delete",
-					null
-				],
-				[
-					"insert",
-					{
-						"characters": "m_zero"
-					}
-				],
-				[
-					"insert_snippet",
-					{
-						"contents": "($0)"
-					}
-				],
-				[
-					"insert",
-					{
-						"characters": "ptr,"
-					}
-				],
-				[
-					"insert",
-					{
-						"characters": " size"
-					}
-				],
-				[
-					"move",
-					{
-						"by": "characters",
-						"forward": true
-					}
-				],
-				[
-					"insert",
-					{
-						"characters": " "
-					}
-				],
-				[
-					"insert_snippet",
-					{
-						"contents": "($0)"
-					}
-				],
-				[
-					"insert",
-					{
-						"characters": "memset"
-					}
-				],
-				[
-					"insert_snippet",
-					{
-						"contents": "($0)"
-					}
-				],
-				[
-					"insert",
-					{
-						"characters": "ptr,"
-					}
-				],
-				[
-					"insert",
-					{
-						"characters": " size"
-					}
-				],
-				[
-					"left_delete",
-					null
-				],
-				[
-					"left_delete",
-					null
-				],
-				[
-					"left_delete",
-					null
-				],
-				[
-					"left_delete",
-					null
-				],
-				[
-					"insert",
-					{
-						"characters": "0,"
-					}
-				],
-				[
-					"insert",
-					{
-						"characters": " size"
-					}
-				],
-				[
-					"move",
-					{
-						"by": "characters",
-						"forward": true
-					}
-				],
-				[
-					"move",
-					{
-						"by": "characters",
-						"forward": true
-					}
-				]
 			],
-			"alternate_view": 239,
+			"alternate_view": 649,
 			"last_search_pattern":
 			[
-				"shadersour"
+				"DELAY"
 			]
 		}
 	},

@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 Circuit* clipboard;
-Node* connect_node = NULL;
+Thing_Id connect_node;
 Board board;
 
 void board_init()
@@ -157,19 +157,13 @@ void draw_circuit(Circuit* circ)
 			{
 				Node* node = (Node*)it;
 				cell_draw_off(node->pos, GLPH_NODE, CLR_RED_1, -1);
-				if (connect_node == node)
-				{
-					cell_draw_off(node->pos, -1, CLR_RED_1, CLR_RED_0);
-				}
-				else
-				{
-					if (node->state)
-						cell_draw_off(node->pos, -1, CLR_RED_0, -1);
-					if (node->link_type == LINK_Public)
-						cell_draw_off(node->pos, -1, -1, CLR_ORNG_1);
-					if (node->link_type == LINK_Chip)
-						cell_draw_off(node->pos, -1, -1, CLR_BLUE_0);
-				}
+
+				if (node->state)
+					cell_draw_off(node->pos, -1, CLR_RED_0, -1);
+				if (node->link_type == LINK_Public)
+					cell_draw_off(node->pos, -1, -1, CLR_ORNG_1);
+				if (node->link_type == LINK_Chip)
+					cell_draw_off(node->pos, -1, -1, CLR_BLUE_0);
 
 				for(u32 i=0; i<4; ++i)
 				{
@@ -256,6 +250,12 @@ void board_draw()
 	if (board.debug)
 		draw_debug();
 
+	Node* connect_node_ptr = node_get(board_get_edit_circuit(), connect_node);
+	if (connect_node_ptr)
+	{
+		cell_draw_off(connect_node_ptr->pos, -1, CLR_RED_1, CLR_RED_0);
+	}
+
 	if (!board.visual)
 	{
 		Cell* cursor_cell = cell_get(point_sub(board.cursor, board.offset));
@@ -292,9 +292,6 @@ void delete_things(Circuit* circ, Thing** thing_arr, u32 count)
 {
 	for(u32 i=0; i<count; ++i)
 	{
-		if (thing_arr[i] == (Thing*)connect_node)
-			connect_node = NULL;
-
 		thing_delete(circ, thing_arr[i]);
 	}
 }
@@ -338,21 +335,23 @@ void board_place_node()
 		}
 	}
 
-	if (connect_node)
+	Node* connect_node_ptr = node_get(circ, connect_node);
+
+	if (connect_node_ptr)
 	{
 		// Re-selected the same node, stop connecting
-		if (node == connect_node)
+		if (node == connect_node_ptr)
 		{
-			connect_node = NULL;
+			connect_node = NULL_ID;
 			return;
 		}
 
-		node_connect(circ, connect_node, node);
-		connect_node = NULL;
+		node_connect(circ, connect_node_ptr, node);
+		connect_node = NULL_ID;
 	}
 	else
 	{
-		connect_node = node;
+		connect_node = thing_id(circ, (Thing*)node);
 	}
 }
 

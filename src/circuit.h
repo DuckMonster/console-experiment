@@ -1,11 +1,7 @@
 #pragma once
 #include <stdio.h>
 
-#define MAX_THINGS 256
-#define MAX_NODES 256
-#define MAX_INVERTERS 256
 #define DIRTY_STACK_SIZE 128
-#define MAX_CHIPS 8
 #define MAX_PUBLIC_NODES 32
 
 typedef struct Circuit Circuit;
@@ -16,6 +12,7 @@ typedef struct
 } Thing_Id;
 inline bool id_eq(Thing_Id a, Thing_Id b) { return memcmp(&a, &b, sizeof(Thing_Id)) == 0; }
 bool id_null(Thing_Id id);
+extern Thing_Id NULL_ID;
 
 enum Direction
 {
@@ -56,6 +53,7 @@ typedef struct
 	u8 data[64];
 } Thing;
 
+void things_reserve(Circuit* circ, u32 num);
 Thing* thing_create(Circuit* circ, u8 type, Point pos);
 void thing_delete(Circuit* circ, Thing* thing);
 Thing* thing_find(Circuit* circ, Point pos, u8 type_mask);
@@ -223,7 +221,8 @@ typedef struct Circuit
 	char name[20];
 	u16 gen_num;
 
-	Thing things[MAX_THINGS];
+	Thing* things;
+	u32 thing_max;
 	u32 thing_num;
 
 	Dirty_Stack dirty_stacks[2];
@@ -234,6 +233,7 @@ typedef struct Circuit
 } Circuit;
 
 Circuit* circuit_make(const char* name);
+void circuit_clear(Circuit* circ);
 void circuit_free(Circuit* circ);
 
 void circuit_subtic(Circuit* circ);

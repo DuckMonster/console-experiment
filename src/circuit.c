@@ -21,6 +21,7 @@ Thing_Type_Data type_data[] =
 };
 
 u32 tic_num = 0;
+Thing_Id NULL_ID = { 0, 0 };
 
 bool id_null(Thing_Id id)
 {
@@ -47,10 +48,30 @@ u8 get_direction(Point from, Point to)
 }
 
 /* THINGS */
+void things_reserve(Circuit* circ, u32 num)
+{
+	if (circ->thing_max >= num)
+		return;
+
+	Thing* prev_things = circ->things;
+
+	circ->things = malloc(sizeof(Thing) * num);
+	mem_zero(circ->things, sizeof(Thing) * num);
+
+	if (prev_things)
+	{
+		memcpy(circ->things, prev_things, sizeof(Thing) * circ->thing_max);
+		free(prev_things);
+	}
+
+	circ->thing_max = num;
+	log("RESERVE %d", num);
+}
+
 Thing* thing_create(Circuit* circ, u8 type, Point pos)
 {
 	Thing* thing = NULL;
-	for(u32 i=0; i<MAX_THINGS; ++i)
+	for(u32 i=0; i<circ->thing_max; ++i)
 	{
 		if (circ->things[i].valid)
 			continue;
@@ -59,7 +80,12 @@ Thing* thing_create(Circuit* circ, u8 type, Point pos)
 		break;
 	}
 
-	assert(thing);
+	// Uh oh, we've ran out of things
+	if (!thing)
+	{
+		things_reserve(circ, circ->thing_max == 0 ? 2 : (circ->thing_max << 1));
+		return thing_create(circ, type, pos);
+	}
 
 	thing->generation = ++circ->gen_num;
 	thing->type = type;
@@ -781,6 +807,14 @@ Circuit* circuit_make(const char* name)
 	return circ;
 }
 
+void circuit_clear(Circuit* circ)
+{
+	if (circ->things)
+		free(circ->things);
+
+	mem_zero(circ, sizeof(Circuit));
+}
+
 void circuit_free(Circuit* circ)
 {
 	free(circ);
@@ -827,7 +861,7 @@ void circuit_tic(Circuit* circ)
 void circuit_merge(Circuit* circ, Circuit* other)
 {
 	// Make sure they actually fit..
-	assert((circ->thing_num) + (other->thing_num) < MAX_THINGS);
+	things_reserve(circ, circ->thing_num + other->thing_num);
 
 	// Copy over all the things, at the end of the target list
 	memcpy(circ->things + circ->thing_num, other->things, sizeof(Thing) * (other->thing_num));
@@ -891,6 +925,9 @@ void circuit_merge(Circuit* circ, Circuit* other)
 void circuit_copy(Circuit* circ, Circuit* other)
 {
 	memcpy(circ, other, sizeof(Circuit));
+	circ->things = malloc(sizeof(Thing) * other->thing_max);
+	memcpy(circ->things, other->things, sizeof(Thing) * other->thing_max);
+
 	THINGS_FOREACH(circ, THING_All)
 	{
 		it->dirty = false;
@@ -935,6 +972,7 @@ void circuit_fwrite(Circuit* circ, FILE* file)
 	fwrite_t(circ->stack_index, file);
 
 	// Write things
+	fwrite_t(circ->thing_max, file);
 	fwrite_t(circ->thing_num, file);
 	for(u32 i=0; i<circ->thing_num; ++i)
 	{
@@ -951,7 +989,7 @@ void circuit_fwrite(Circuit* circ, FILE* file)
 
 void circuit_fread(Circuit* circ, FILE* file)
 {
-	mem_zero(circ, sizeof(Circuit));
+	circuit_clear(circ);
 
 	fread_t(circ->name, file);
 	fread_t(circ->gen_num, file);
@@ -959,6 +997,10 @@ void circuit_fread(Circuit* circ, FILE* file)
 	fread_t(circ->stack_index, file);
 
 	// Read things
+	fread_t(circ->thing_max, file);
+	circ->things = malloc(sizeof(Thing) * circ->thing_max);
+	mem_zero(circ->things, sizeof(Thing) * circ->thing_max);
+
 	fread_t(circ->thing_num, file);
 	for(u32 i=0; i<circ->thing_num; ++i)
 	{
@@ -982,6 +1024,7 @@ void circuit_save(Circuit* circ, const char* path)
 	u32 bytes_written = ftell(file);
 
 	log("Saved to '%s'; %dB written", path, bytes_written);
+	fclose(file);
 }
 
 void circuit_load(Circuit* circ, const char* path)
