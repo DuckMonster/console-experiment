@@ -179,6 +179,9 @@ u32 things_find(Circuit* circ, Rect rect, Thing** out_arr, u32 arr_size)
 	{
 		if (rect_rect_intersect(thing_get_bbox(it), rect))
 			out_arr[index++] = it;
+
+		if (index >= arr_size)
+			break;
 	}
 
 	return index;

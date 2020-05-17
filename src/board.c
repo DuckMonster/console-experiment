@@ -301,17 +301,20 @@ void board_delete()
 	Circuit* circ = board_get_edit_circuit();
 	if (board.visual)
 	{
-		static Thing* thing_buf[64];
-		u32 num_things = things_find(circ, rect(board.vis_origin, board.cursor), thing_buf, 64);
+		Rect vis_rect = rect(board.cursor, board.vis_origin);
+		THINGS_FOREACH(circ, THING_All)
+		{
+			if (rect_rect_intersect(thing_get_bbox(it), vis_rect))
+				thing_delete(circ, it);
+		}
 
-		delete_things(circ, thing_buf, num_things);
 		board.visual = false;
 	}
 	else
 	{
 		Thing* thing = thing_find(circ, board.cursor, THING_All);
 		if (thing)
-			delete_things(circ, &thing, 1);
+			thing_delete(circ, thing);
 	}
 }
 
