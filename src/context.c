@@ -1,6 +1,7 @@
 #include "context.h"
 #include "gl_bind.h"
 #include "board.h"
+#include "cells.h"
 
 #define KEY_CTRL 0x1D
 #define KEY_SHIFT 0x2A
@@ -16,6 +17,8 @@ const LPCSTR class_name = "WindowClass";
 bool is_open = false;
 
 u32 key_mod_flags = 0;
+const u32 window_style = (WS_OVERLAPPEDWINDOW | WS_SIZEBOX | WS_VISIBLE);
+i32 window_scale = 2;
 
 // Structs for handing events
 // WM_KEYDOWN & WM_KEYUP
@@ -51,8 +54,24 @@ typedef struct
 	u16 height;
 } Win_Size_Params;
 
+void convert_client_to_wnd_size(u32* width, u32* height)
+{
+	RECT client_rect;
+	client_rect.left = 0;
+	client_rect.top = 0;
+	client_rect.right = *width;
+	client_rect.bottom = *height;
+	bool result = AdjustWindowRect(&client_rect, window_style, false);
+	if (!result)
+		return;
+
+	*width = client_rect.right - client_rect.left;
+	*height = client_rect.bottom - client_rect.top;
+}
+
 LRESULT CALLBACK wnd_proc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
+	static bool ignore_resize = false;
 	switch(msg)
 	{
 		// Key down
@@ -89,17 +108,37 @@ LRESULT CALLBACK wnd_proc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 			break;
 		}
 
+		// Sizing
+		case WM_SIZING:
+		{
+			RECT* size_rect = (RECT*)lparam;
+
+			// Constrain the sizes...
+			u32 unit_width = CELL_WIDTH * window_scale;
+			u32 unit_height = CELL_HEIGHT * window_scale;
+
+			u32 width = size_rect->right - size_rect->left;
+			u32 height = size_rect->bottom - size_rect->top;
+			width = (u32)((width / unit_width) * unit_width);
+			height = (u32)((height / unit_height) * unit_height);
+
+			// Translate sizes to window-space
+			convert_client_to_wnd_size(&width, &height);
+
+			// And adjust the size rect!
+			size_rect->right = size_rect->left + width;
+			size_rect->bottom = size_rect->top + height;
+			break;
+		}
+
 		// Size
 		case WM_SIZE:
 		{
 			Win_Size_Params* size = (Win_Size_Params*)&lparam;
-
 			context.width = size->width;
 			context.height = size->height;
-
-			log("%d/%d", context.width, context.height);
-
 			glViewport(0, 0, context.width, context.height);
+
 			break;
 		}
 
@@ -154,7 +193,7 @@ void context_open(const char* title, i32 x, i32 y, u32 width, u32 height)
 	client_rect.top = 0;
 	client_rect.right = width;
 	client_rect.bottom = height;
-	bool result = AdjustWindowRect(&client_rect, WS_OVERLAPPEDWINDOW | WS_VISIBLE, false);
+	bool result = AdjustWindowRect(&client_rect, window_style, false);
 
 	context.x = x;
 	context.y = y;
@@ -165,7 +204,7 @@ void context_open(const char* title, i32 x, i32 y, u32 width, u32 height)
 	wnd_handle = CreateWindow(
 		class_name,
 		title,
-		WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+		window_style,
 		context.x, context.y, context.width, context.height,
 		0, 0,
 		instance,
