@@ -434,8 +434,9 @@ bool node_batch_contains_power(Circuit* circ, Node* node, i32 recurse_id)
 
 	node->recurse_id = recurse_id;
 
-	// This node is powered!
-	if (thing_powered(node))
+	// Check if the source (left) is powered
+	Thing* src = thing_find(circ, point_add(node->pos, point(-1, 0)), THING_All);
+	if (src && thing_powered(src))
 		return true;
 
 	// Otherwise, keep searching...
@@ -641,15 +642,10 @@ void inverter_on_clean(Circuit* circ, Inverter* inv)
 		new_active = true;
 
 	thing_set_active(inv, new_active);
+	thing_set_powered(inv, new_active);
+
 	if (new_active != prev_active)
-	{
-		Thing* target = thing_find(circ, point_add(inv->pos, point(1, 0)), THING_All);
-		if (target)
-		{
-			thing_set_powered(target, new_active);
-			thing_set_dirty(circ, target);
-		}
-	}
+		thing_dirty_at(circ, point_add(inv->pos, point(1, 0)));
 }
 
 Chip* chip_find(Circuit* circ, Point pos)
@@ -789,15 +785,10 @@ void delay_on_clean(Circuit* circ, Delay* delay)
 		new_active = false;
 
 	thing_set_active(delay, new_active);
+	thing_set_powered(delay, new_active);
+
 	if (new_active != prev_active)
-	{
-		Thing* target = thing_find(circ, point_add(delay->pos, point(1, 0)), THING_All);
-		if (target)
-		{
-			thing_set_powered(target, new_active);
-			thing_set_dirty(circ, target);
-		}
-	}
+		thing_dirty_at(circ, point_add(delay->pos, point(1, 0)));
 }
 
 /* CIRCUIT */
