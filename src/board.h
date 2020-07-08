@@ -42,6 +42,7 @@ typedef struct
 	i32 edit_index;
 
 	bool debug;
+	bool debug_overlay;
 } Board;
 extern Board board;
 

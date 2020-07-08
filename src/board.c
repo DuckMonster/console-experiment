@@ -28,6 +28,11 @@ void cell_draw_off(Point pnt, i32 glyph, i32 fg_color, i32 bg_color)
 	cell_set(point_sub(pnt, board.offset), glyph, fg_color, bg_color);
 }
 
+void cell_write_str_off(Point pnt, const char* str, i32 fg_color, i32 bg_color)
+{
+	cell_write_str(point_sub(pnt, board.offset), str, fg_color, bg_color);
+}
+
 void cell_or(Point pnt, i32 or_glyph)
 {
 	Cell* cell = cell_get(pnt);
@@ -37,7 +42,7 @@ void cell_or(Point pnt, i32 or_glyph)
 	cell->glyph |= or_glyph;
 }
 
-void cell_or_off(Point pnt, i32 or_glyph)
+void cell_or_offset(Point pnt, i32 or_glyph)
 {
 	cell_or(point_sub(pnt, board.offset), or_glyph);
 }
@@ -80,6 +85,23 @@ void draw_dirty_stack(Dirty_Stack* stack, Point offset, bool is_tic)
 	}
 }
 
+void draw_dirty_stack_overlay(Dirty_Stack* stack)
+{
+	Circuit* circ = board_get_edit_circuit();
+
+	static char digit_buff[3];
+	for(u32 i=0; i<stack->count; ++i)
+	{
+		u32 stack_index = stack->count - i - 1;
+		Thing* thing = thing_get(circ, stack->list[stack_index]);
+		if (!thing)
+			continue;
+
+		sprintf(digit_buff, "%d", i);
+		cell_write_str_off(thing->pos, digit_buff, CLR_BLACK, CLR_WHITE);
+	}
+}
+
 void draw_debug()
 {
 	static char debug_buff[50];
@@ -98,6 +120,9 @@ void draw_debug()
 
 	draw_dirty_stack(&circ->dirty_stacks[0], point(0, 0), circ->stack_index == 0);
 	draw_dirty_stack(&circ->dirty_stacks[1], point(20, 0), circ->stack_index == 1);
+
+	if (board.debug_overlay)
+		draw_dirty_stack_overlay(&circ->dirty_stacks[circ->stack_index]);
 }
 
 void draw_connection(Rect rect, bool state)
@@ -172,7 +197,7 @@ void draw_circuit(Circuit* circ)
 						continue;
 
 					u8 direction = get_direction(node->pos, other->pos);
-					cell_or_off(node->pos, direction);
+					cell_or_offset(node->pos, direction);
 
 					draw_connection(rect(node->pos, other->pos), node->flags & other->flags & FLAG_Active);
 				}
@@ -586,6 +611,7 @@ bool board_key_event(u32 code, char chr, u32 mods)
 			case KEY_DELETE: prompt_msg("Error", "This is an error"); break;
 
 			case KEY_TIC: board.debug = !board.debug; break;
+			case KEY_SUBTIC: board.debug_overlay = !board.debug_overlay; break;
 		}
 	}
 
