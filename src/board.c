@@ -63,6 +63,7 @@ void draw_edit_stack()
 	}
 }
 
+/*
 void draw_dirty_stack(Dirty_Stack* stack, Point offset, bool is_tic)
 {
 	Circuit* circ = board_get_edit_circuit();
@@ -102,8 +103,10 @@ void draw_dirty_stack_overlay(Dirty_Stack* stack)
 	}
 }
 
+*/
 void draw_debug()
 {
+	/*
 	static char debug_buff[50];
 	Circuit* circ = board_get_edit_circuit();
 
@@ -123,6 +126,7 @@ void draw_debug()
 
 	if (board.debug_overlay)
 		draw_dirty_stack_overlay(&circ->dirty_stacks[circ->stack_index]);
+	*/
 }
 
 void draw_connection(Rect rect, bool state)

@@ -16,9 +16,6 @@ typedef struct Circuit
 	u32 thing_max;
 	u32 thing_num;
 
-	Dirty_Stack dirty_stacks[2];
-	u8 stack_index;
-
 	Thing_Id public_nodes[MAX_PUBLIC_NODES];
 	Circuit* parent;
 } Circuit;

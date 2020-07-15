@@ -26,6 +26,7 @@ void circuit_free(Circuit* circ)
 
 void circuit_subtic(Circuit* circ)
 {
+	/*
 	Dirty_Stack* tic_stack = &circ->dirty_stacks[circ->stack_index];
 	if (tic_stack->count == 0)
 		return;
@@ -43,10 +44,12 @@ void circuit_subtic(Circuit* circ)
 		circ->stack_index = !circ->stack_index;
 		tic++;
 	}
+	*/
 }
 
 void circuit_tic(Circuit* circ)
 {
+	/*
 	Dirty_Stack* tic_stack = &circ->dirty_stacks[circ->stack_index];
 	if (tic_stack->count == 0)
 		return;
@@ -60,6 +63,7 @@ void circuit_tic(Circuit* circ)
 
 	circ->stack_index = !circ->stack_index;
 	tic++;
+	*/
 }
 
 void circuit_merge(Circuit* circ, Circuit* other)
@@ -173,8 +177,6 @@ void circuit_fwrite(Circuit* circ, FILE* file)
 {
 	fwrite_t(circ->name, file);
 	fwrite_t(circ->gen_num, file);
-	fwrite_t(circ->dirty_stacks, file);
-	fwrite_t(circ->stack_index, file);
 
 	// Write things
 	fwrite_t(circ->thing_max, file);
@@ -199,8 +201,6 @@ void circuit_fread(Circuit* circ, FILE* file)
 
 	fread_t(circ->name, file);
 	fread_t(circ->gen_num, file);
-	fread_t(circ->dirty_stacks, file);
-	fread_t(circ->stack_index, file);
 
 	// Read things
 	fread_t(circ->thing_max, file);
